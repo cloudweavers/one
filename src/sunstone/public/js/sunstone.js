@@ -1,5 +1,5 @@
  /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -78,7 +78,9 @@ var language_options = '<option value="en_US">English (en_US)</option>\
    <option value="fr_FR">French (fr_FR)</option>\
    <option value="de">German (de)</option>\
    <option value="el_GR">Greek (el_GR)</option>\
-   <option value="it_IT">Italian (el_GR)</option>\
+   <option value="it_IT">Italian (it_IT)</option>\
+   <option value="ja">Japanese (ja)</option>\
+   <option value="lt_LT">Lithuanian (lt_LT)</option>\
    <option value="fa_IR">Persian (fa_IR)</option>\
    <option value="pl">Polish (pl)</option>\
    <option value="pt_BR">Portuguese (pt_BR)</option>\
@@ -180,7 +182,15 @@ var Sunstone = {
 
         var form_obj = SunstoneCfg["form_panels"][form_name];
 
+        $(".right-form", context).data("initialize_func", initialize_func);
+
         $(".reset_button", context).show();
+
+        if (form_obj.advanced_html) {
+            $(".wizard_tabs", context).show();
+        } else {
+            $(".wizard_tabs", context).hide();
+        }
 
         if (action) {
             $(".right-form-title", context).text(form_obj["actions"][action]["title"]);
@@ -858,7 +868,8 @@ function insertButtonsInTab(tab_name, panel_name, panel_buttons, custom_context)
             switch (button.layout) {
             case "create":
                 button_context = $("#"+custom_id+"create_buttons", buttons_row);
-                text = button.text ? '<i class="fa fa-plus"/>  ' + button.text : '<i class="fa fa-plus"/>';
+                icon = button.icon ? button.icon : '<i class="fa fa-plus"/>';
+                text = button.text ? icon + ' ' + button.text : icon;
                 str_class.push("success", "button", "small", "radius");
                 button_code = '<button class="'+str_class.join(' ')+'" href="'+button_name+'">'+text+'</button>';
                 break;
@@ -986,7 +997,8 @@ function insertButtonsInTab(tab_name, panel_name, panel_buttons, custom_context)
 
         $('#'+custom_id+'reset_button', action_block).on("click", function(){
             var form_name = $(".right-form", context).attr("form_name");
-            Sunstone.popUpFormPanel(form_name, tab_name, null, true)
+            var initialize_func = $(".right-form", context).data("initialize_func");
+            Sunstone.popUpFormPanel(form_name, tab_name, null, true, initialize_func);
 
             return false;
         })
@@ -1381,6 +1393,21 @@ function tableCheckboxesListener(dataTable, custom_context){
         }
 
         recountCheckboxes(datatable, context);
+    });
+}
+
+
+/*
+ * onlyOneCheckboxListener: Only one box can be checked
+ */
+
+function onlyOneCheckboxListener(dataTable) {
+    $('tbody input.check_item', dataTable).live("change", function(){
+        var checked = $(this).is(':checked');
+        $('td', dataTable).removeClass('markrowchecked');
+        $('input.check_item:checked', dataTable).removeAttr('checked');
+        $("td", $(this).closest('tr')).addClass('markrowchecked')
+        $(this).attr('checked', checked);
     });
 }
 
@@ -1828,6 +1855,43 @@ function getName(id,dataTable,name_col){
     return name;
 };
 
+function getHostIdFromName(hostName) {
+  getColumnValue({
+      dataTable: dataTable_hosts,
+      columnFilterIndex: 2, // Name
+      columnFilterValue: hostName,
+      columnResultIndex: 1 // ID
+    });
+}
+
+/*
+  Returns the value of the columnResultIndex column of the row
+    whose columnFilterIndex column has the columnFilterValue value 
+
+  opts = {
+    dataTable: datatable to get the info from
+    columnFilterIndex: column that will be filtered
+    columnFilterValue: value to filter
+    columnResultIndex: value to be returned
+  }
+ */
+function getColumnValue(opts) {
+  if (typeof(opts.dataTable) == "undefined") {
+    return false;
+  };
+
+  var result = false;
+
+  $.each(opts.dataTable.fnGetData(), function(){
+    if (opts.columnFilterValue == this[opts.columnFilterIndex]) {
+      result = this[opts.columnResultIndex];
+      return false;
+    }
+  });
+
+  return result;
+}
+
 // A more general version of the above.
 // Search a datatable record matching the filter_str in the filter_col. Returns
 // the value of that record in the desired value column.
@@ -1997,16 +2061,18 @@ function plot_graph(response, info) {
 
         var data = response.monitoring[attribute];
 
-        if(info.derivative == true && data) {
-            derivative(data);
-        }
+        if (data) {
+            if(info.derivative == true) {
+                derivative(data);
+            }
 
-        series.push({
-            stack: attribute,
-            // Turns label TEMPLATE/BLABLA into BLABLA
-            label: labels ? labels[i] : attribute[i].split('/').pop(),
-            data: data
-        });
+            series.push({
+                stack: attribute,
+                // Turns label TEMPLATE/BLABLA into BLABLA
+                label: labels ? labels[i] : attribute[i].split('/').pop(),
+                data: data
+            });
+        }
     }
 
     var humanize = info.humanize_figures ?
@@ -2046,7 +2112,9 @@ function plot_graph(response, info) {
         }
     };
 
-    $.plot(info.div_graph, series, options);
+    if (series.length > 0) {
+        $.plot(info.div_graph, series, options);
+    };
 }
 
 
@@ -3895,7 +3963,7 @@ function fromJSONtoHTMLRow(field,value,resource_type,resource_id, vectorial_key,
         if (vectorial_key)
         {
             str += '<tr>\
-                     <td class="key_td key_vectorial_td" style="text-align:center">'+tr(field)+'</td>\
+                     <td class="key_td key_vectorial_td">&emsp;&emsp;'+tr(field)+'</td>\
                      <td class="value_td value_vectorial_td value_td_input_'+field+ocurrence_str+' vectorial_key_'+vectorial_key+'" id="value_td_input_'+field+'">'+value+'</td>\
                      <td class="text-right">\
                        <span id="div_edit_vectorial">\
@@ -4404,7 +4472,7 @@ function quotaDashboard(html_tag, legend, font_large_size, font_small_size, quot
 
     return '<div class="row">'+
           '<div class="large-12 columns text-center" style="margin-bottom: 5px">'+
-            '<span id="'+html_tag+'_percentage" style="font-size:'+font_large_size+';">'+quota.percentage+'</span>'+'<span style="font-size:20px; color: #999">'+"%"+'</span>'+
+            '<span>'+legend+'</span>'+
           '</div>'+
         '</div>'+
         '<div class="row">'+
@@ -4416,9 +4484,8 @@ function quotaDashboard(html_tag, legend, font_large_size, font_small_size, quot
         '</div>'+
         '<div class="row">'+
           '<div class="large-12 columns text-center">'+
-            '<span>'+legend+'</span>'+
-            '<br>'+
-            '<span id="'+html_tag+'_str" style="color: #999; font-size: '+font_small_size+';">'+quota.str+'</span>'+
+            '<span id="'+html_tag+'_percentage" class="left" style="font-size:'+font_small_size+';">'+quota.percentage+' %</span>'+
+            '<span id="'+html_tag+'_str" class="right" style="color: #999; font-size: '+font_small_size+';">'+quota.str+'</span>'+
           '</div>'+
         '</div>';
 }
@@ -4756,7 +4823,7 @@ $(document).ready(function(){
     $('a.zone-choice').live("click", function(){
       $.ajax({
         url: 'config',
-        type: "HEAD",
+        type: "GET",
         headers: {
             "ZONE_NAME" : this.id
         },
@@ -4764,7 +4831,8 @@ $(document).ready(function(){
         success: function(){
             window.location.href = ".";
         },
-        error: function(response){
+        error: function(response) {
+            onError(null, OpenNebula.Error(response))
         }
       });
     });
@@ -4791,35 +4859,22 @@ function time_UTC(time){
 
 // div is a jQuery selector
 // The following options can be set:
-//   fixed_user     fix an owner user ID
-//   fixed_group    fix an owner group ID
-//   init_group_by  "user", "group", "vm". init the group-by selector
-//   fixed_group_by "user", "group", "vm". set a fixed group-by selector
+//   fixed_user     fix an owner user ID. Use "" to fix to "any user"
+//   fixed_group    fix an owner group ID. Use "" to fix to "any group"
 function showbackGraphs(div, opt){
-
-    if(div.html() != ""){
-        return false;
-    }
 
     div.html(
     '<div class="row">\
-      <div id="showback_owner_container" class="left columns">\
-        <label for="showback_owner">' +  tr("Filter") + '</label>\
-        <div class="row">\
-          <div class="large-5 columns">\
-            <select id="showback_owner" name="showback_owner">\
-              <option value="showback_owner_all">' + tr("All") + '</option>\
-              <option value="showback_owner_group">' + tr("Group") + '</option>\
-              <option value="showback_owner_user">' + tr("User") + '</option>\
-            </select>\
-          </div>\
-          <div class="large-7 columns">\
-            <div id="showback_owner_select"/>\
-          </div>\
-        </div>\
+      <div id="showback_user_container" class="left medium-4 columns">\
+        <label for="showback_user_select">' +  tr("Filter by user") + '</label>\
+        <div id="showback_user_select"/>\
       </div>\
-      <div id="showback_button_container" class="left columns">\
-        <button class="button radius success right" id="showback_submit" type="button">'+tr("Get Showback")+'</button>\
+      <div id="showback_group_container" class="left medium-4 columns">\
+        <label for="showback_group_select">' +  tr("Filter by group") + '</label>\
+        <div id="showback_group_select"/>\
+      </div>\
+      <div id="showback_button_container" class="right medium-3 columns">\
+        <button class="button radius success right large-12" id="showback_submit" type="button">'+tr("Get Showback")+'</button>\
       </div>\
     </div>\
     <div id="showback_placeholder">\
@@ -4896,29 +4951,17 @@ function showbackGraphs(div, opt){
     // VM owner: all, group, user
     //--------------------------------------------------------------------------
 
-    if (opt.fixed_user != undefined || opt.fixed_group != undefined){
-        $("#showback_owner_container", div).hide();
+    if (opt.fixed_user != undefined){
+        $("#showback_user_container", div).hide();
     } else {
-        $("select#showback_owner", div).change(function(){
-            var value = $(this).val();
-
-            switch (value){
-            case "showback_owner_all":
-                $("#showback_owner_select", div).hide();
-                break;
-
-            case "showback_owner_group":
-                $("#showback_owner_select", div).show();
-                insertSelectOptions("#showback_owner_select", div, "Group");
-                break;
-
-            case "showback_owner_user":
-                $("#showback_owner_select", div).show();
-                insertSelectOptions("#showback_owner_select", div, "User", -1, false,
+        insertSelectOptions("#showback_user_select", div, "User", -1, false,
                     '<option value="-1">'+tr("<< me >>")+'</option>');
-                break;
-            }
-        });
+    }
+
+    if (opt.fixed_group != undefined){
+        $("#showback_group_container", div).hide();
+    } else {
+        insertSelectOptions("#showback_group_select", div, "Group", "", true);
     }
 
     showback_dataTable = $("#showback_datatable",div).dataTable({
@@ -4957,29 +5000,29 @@ function showbackGraphs(div, opt){
 
     $("#showback_submit", div).on("click", function(){
         var options = {};
+
+        var userfilter;
+        var group;
+
         if (opt.fixed_user != undefined){
-            options.userfilter = opt.fixed_user;
-        } else if (opt.fixed_group != undefined){
-            options.group = opt.fixed_group;
+            userfilter = opt.fixed_user;
+
         } else {
-            var select_val = $("#showback_owner_select .resource_list_select", div).val();
+            userfilter = $("#showback_user_select .resource_list_select", div).val();
+        }
 
-            switch ($("select#showback_owner", div).val()){
-            case "showback_owner_all":
-                break;
+        if (opt.fixed_group != undefined){
+            group = opt.fixed_group;
+        } else {
+            group = $("#showback_group_select .resource_list_select", div).val();
+        }
 
-            case "showback_owner_group":
-                if(select_val != ""){
-                    options.group = select_val;
-                }
-                break;
+        if(userfilter != ""){
+            options.userfilter = userfilter;
+        }
 
-            case "showback_owner_user":
-                if(select_val != ""){
-                    options.userfilter = select_val;
-                }
-                break;
-            }
+        if(group != ""){
+            options.group = group;
         }
 
         OpenNebula.VM.showback({
@@ -5019,8 +5062,8 @@ function fillShowback(div, req, response) {
             }
         }
 
-        vms_per_date[showback.YEAR][showback.MONTH].VMS.push([showback.VMID, showback.VMNAME, showback.UNAME, showback.HOURS, showback.COST]);
-        vms_per_date[showback.YEAR][showback.MONTH].TOTAL += parseFloat(showback.COST);
+        vms_per_date[showback.YEAR][showback.MONTH].VMS.push([showback.VMID, showback.VMNAME, showback.UNAME, showback.HOURS, showback.TOTAL_COST]);
+        vms_per_date[showback.YEAR][showback.MONTH].TOTAL += parseFloat(showback.TOTAL_COST);
     });
 
     var series = []
@@ -5093,11 +5136,6 @@ function fillShowback(div, req, response) {
 //   init_group_by  "user", "group", "vm". init the group-by selector
 //   fixed_group_by "user", "group", "vm". set a fixed group-by selector
 function accountingGraphs(div, opt){
-
-    if(div.html() != ""){
-        return false;
-    }
-
     div.html(
     '<div class="row">\
       <div id="acct_start_time_container" class="left columns">\
@@ -5173,39 +5211,44 @@ function accountingGraphs(div, opt){
           </div>\
         </div>\
       </div>\
-      <div class="row acct_table">\
-        <div class="large-12 columns graph_legend">\
-          <h3 class="subheader"><small>'+tr("CPU hours")+'</small></h3>\
-        </div>\
-        <div class="large-12 columns" style="overflow:auto">\
-          <table id="acct_cpu_datatable" class="datatable twelve">\
-            <thead>\
-              <tr>\
-                <th>'+tr("Date")+'</th>\
-              </tr>\
-            </thead>\
-            <tbody id="tbody_acct_cpu_datatable">\
-            </tbody>\
-          </table>\
-        </div>\
-      </div>\
-      <div class="row acct_table">\
-        <div class="large-12 columns graph_legend">\
-          <h3 class="subheader"><small>'+tr("Memory GB hours")+'</small></h3>\
-        </div>\
-        <div class="large-12 columns" style="overflow:auto">\
-          <table id="acct_mem_datatable" class="datatable twelve">\
-            <thead>\
-              <tr>\
-                <th>'+tr("Date")+'</th>\
-              </tr>\
-            </thead>\
-            <tbody id="tbody_acct_mem_datatable">\
-            </tbody>\
-          </table>\
-        </div>\
-      </div>\
-    </div>');
+      <br>' +
+        generateAdvancedSection({
+            title: tr("Accounting Tables"),
+            html_id: "advanced_accounting_tables",
+            content: '<div class="row acct_table">\
+                <div class="large-12 columns graph_legend">\
+                  <h3 class="subheader"><small>'+tr("CPU hours")+'</small></h3>\
+                </div>\
+                <div class="large-12 columns" style="overflow:auto">\
+                  <table id="acct_cpu_datatable" class="datatable twelve">\
+                    <thead>\
+                      <tr>\
+                        <th>'+tr("Date")+'</th>\
+                      </tr>\
+                    </thead>\
+                    <tbody id="tbody_acct_cpu_datatable">\
+                    </tbody>\
+                  </table>\
+                </div>\
+              </div>\
+              <div class="row acct_table">\
+                <div class="large-12 columns graph_legend">\
+                  <h3 class="subheader"><small>'+tr("Memory GB hours")+'</small></h3>\
+                </div>\
+                <div class="large-12 columns" style="overflow:auto">\
+                  <table id="acct_mem_datatable" class="datatable twelve">\
+                    <thead>\
+                      <tr>\
+                        <th>'+tr("Date")+'</th>\
+                      </tr>\
+                    </thead>\
+                    <tbody id="tbody_acct_mem_datatable">\
+                    </tbody>\
+                  </table>\
+                </div>\
+              </div>'
+        }) +
+    '</div>');
 
     if (opt == undefined){
         opt = {};
@@ -5328,15 +5371,21 @@ function accountingGraphs(div, opt){
 
         var v = $("#acct_end_time", div).val();
         if (v != ""){
-            end_time = dateFromString(v)
+            end_time = new Date(v+' UTC');
 
             if (isNaN(end_time)){
                 notifyError(tr("Time range end is not a valid date. It must be YYYY/MM/DD"));
                 return false;
             }
 
+            // Add 1 to end_date, because the date is initialized at 00:00.
+            // The difference for this range  01/01, 31/01  is:
+            //   without adjustment: [01, 31)
+            //             adjusted: [01, 31]
+            end_time.setDate(end_time.getDate() + 1);
+
             // ms to s
-            end_time = end_time / 1000;
+            end_time = end_time.getTime() / 1000;
         }
 
         var options = {
@@ -5369,15 +5418,10 @@ function accountingGraphs(div, opt){
             }
         }
 
-        var no_table = false;
-        if (opt["no_table"] == true) {
-            no_table = true;
-        }
-
         OpenNebula.VM.accounting({
     //        timeout: true,
             success: function(req, response){
-                fillAccounting(div, req, response, no_table);
+                fillAccounting(div, req, response, false);
             },
             error: onError,
             data: options
@@ -5398,10 +5442,16 @@ function fillAccounting(div, req, response, no_table) {
     var start = new Date(options.start_time * 1000);
     start.setUTCHours(0,0,0,0);
 
-    var end = new Date();
+    var end;
+    var now = new Date();
 
-    if(options.end_time != undefined && options.end_time != -1){
-        var end = new Date(options.end_time * 1000)
+    if (options.end_time != undefined && options.end_time != -1) {
+        end = new Date(options.end_time * 1000)
+        if (end > now) {
+            end = now;
+        }
+    } else {
+        end = now;
     }
 
     // granularity of 1 day
@@ -5409,14 +5459,20 @@ function fillAccounting(div, req, response, no_table) {
 
     var tmp_time = start;
 
-    // End time is the start of the last time slot. We use <=, to
-    // add one extra time step
-    while (tmp_time <= end) {
+    while (tmp_time < end) {
         times.push(tmp_time.getTime());
 
         // day += 1
         tmp_time.setUTCDate( tmp_time.getUTCDate() + 1 );
     }
+
+    // End time is the start of the last time slot. For the last slot,
+    // we don't add one day if the date is the current day, we add "up to now".
+    if (tmp_time > now) {
+        tmp_time = now;
+    }
+
+    times.push(tmp_time.getTime());
 
     //--------------------------------------------------------------------------
     // Flot options
@@ -5652,7 +5708,7 @@ function fillAccounting(div, req, response, no_table) {
     //--------------------------------------------------------------------------
 
     if (no_table) {
-        $(".acct_table").hide();
+        $(".acct_table",div).hide();
     } else {
         $("#acct_cpu_datatable",div).dataTable().fnClearTable();
         $("#acct_cpu_datatable",div).dataTable().fnDestroy();
@@ -5978,6 +6034,7 @@ function generateVNetTableSelect(context_id){
 // opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
 //                 an ID is not returned by the pool, it will be included as a
 //                 blank row
+// opts.zone_id: Retrieves elements from this zone, instead of the current one
 function setupVNetTableSelect(section, context_id, opts){
 
     if(opts == undefined){
@@ -6032,49 +6089,65 @@ function setupVNetTableSelect(section, context_id, opts){
         "uname_index": 2,
 
         "update_fn": function(datatable){
-            OpenNebula.Network.list({
-                timeout: true,
-                success: function (request, networks_list){
-                    var network_list_array = [];
+            var success_func = function (request, networks_list){
+                var network_list_array = [];
 
-                    var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+                var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
 
-                    $.each(networks_list,function(){
-                        var add = true;
+                $.each(networks_list,function(){
+                    var add = true;
 
-                        if(opts.filter_fn){
-                            add = opts.filter_fn(this.VNET);
-                        }
+                    if(opts.filter_fn){
+                        add = opts.filter_fn(this.VNET);
+                    }
 
-                        if(opts.fixed_ids != undefined){
-                            add = (add && fixed_ids_map[this.VNET.ID]);
-                        }
+                    if(opts.fixed_ids != undefined){
+                        add = (add && fixed_ids_map[this.VNET.ID]);
+                    }
 
-                        if(add){
-                            network_list_array.push(vNetworkElementArray(this));
+                    if(add){
+                        network_list_array.push(vNetworkElementArray(this));
 
-                            delete fixed_ids_map[this.VNET.ID];
-                        }
-                    });
+                        delete fixed_ids_map[this.VNET.ID];
+                    }
+                });
 
-                    var n_columns = 10; // SET FOR EACH RESOURCE
+                var n_columns = 10; // SET FOR EACH RESOURCE
 
-                    $.each(fixed_ids_map, function(id,v){
-                        var empty = [];
+                $.each(fixed_ids_map, function(id,v){
+                    var empty = [];
 
-                        for(var i=0; i<=n_columns; i++){
-                            empty.push("");
-                        }
+                    for(var i=0; i<=n_columns; i++){
+                        empty.push("");
+                    }
 
-                        empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+                    empty[1] = id;  // SET FOR EACH RESOURCE, id_index
 
-                        list_array.push(empty);
-                    });
+                    network_list_array.push(empty);
+                });
 
-                    updateView(network_list_array, datatable);
-                },
-                error: onError
-            });
+                updateView(network_list_array, datatable);
+            }
+
+            var error_func = function(request,error_json, container){
+                success_func(request, []);
+                onError(request,error_json, container);
+            }
+
+            if (opts.zone_id == undefined) {
+                OpenNebula.Network.list({
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            } else {
+                OpenNebula.Network.list_in_zone({
+                    data: { zone_id: opts.zone_id },
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            }
         },
 
         "select_callback": opts.select_callback
@@ -6125,6 +6198,12 @@ function generateTemplateTableSelect(context_id){
 // opts.bVisible: dataTable bVisible option. If not set, the .yaml visibility will be used
 // opts.filter_fn: boolean function to filter which elements to show
 // opts.select_callback(aData, options): function called after a row is selected
+// opts.multiple_choice: boolean true to enable multiple element selection
+// opts.read_only: boolean true so user is not asked to select elements
+// opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
+//                 an ID is not returned by the pool, it will be included as a
+//                 blank row
+// opts.zone_id: Retrieves elements from this zone, instead of the current one
 function setupTemplateTableSelect(section, context_id, opts){
 
     if(opts == undefined){
@@ -6143,6 +6222,18 @@ function setupTemplateTableSelect(section, context_id, opts){
         opts.bVisible = config;
     }
 
+    if(opts.multiple_choice == undefined){
+        opts.multiple_choice = false;
+    }
+
+    var fixed_ids_map_orig = {};
+
+    if(opts.fixed_ids != undefined){
+        $.each(opts.fixed_ids,function(){
+            fixed_ids_map_orig[this] = true;
+        });
+    }
+
     var options = {
         "dataTable_options": {
           "bAutoWidth":false,
@@ -6158,38 +6249,97 @@ function setupTemplateTableSelect(section, context_id, opts){
             ]
         },
 
+        "multiple_choice": opts.multiple_choice,
+        "read_only": opts.read_only,
+        "fixed_ids": opts.fixed_ids,
+
         "id_index": 1,
         "name_index": 4,
         "uname_index": 2,
 
         "update_fn": function(datatable){
-            OpenNebula.Template.list({
-                timeout: true,
-                success: function (request, resource_list){
-                    var list_array = [];
+            var success_func = function (request, resource_list){
+                var list_array = [];
 
-                    $.each(resource_list,function(){
-                        var add = true;
+                var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
 
-                        if(opts.filter_fn){
-                            add = opts.filter_fn(this.VMTEMPLATE);
-                        }
+                $.each(resource_list,function(){
+                    var add = true;
 
-                        if(add){
-                            list_array.push(templateElementArray(this));
-                        }
-                    });
+                    if(opts.filter_fn){
+                        add = opts.filter_fn(this.VMTEMPLATE);
+                    }
 
-                    updateView(list_array, datatable);
-                },
-                error: onError
-            });
+                    if(opts.fixed_ids != undefined){
+                        add = (add && fixed_ids_map[this.VMTEMPLATE.ID]);
+                    }
+
+                    if(add){
+                        list_array.push(templateElementArray(this));
+
+                        delete fixed_ids_map[this.VMTEMPLATE.ID];
+                    }
+                });
+
+                var n_columns = 6; // SET FOR EACH RESOURCE
+
+                $.each(fixed_ids_map, function(id,v){
+                    var empty = [];
+
+                    for(var i=0; i<=n_columns; i++){
+                        empty.push("");
+                    }
+
+                    empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+
+                    list_array.push(empty);
+                });
+
+                updateView(list_array, datatable);
+            }
+
+            var error_func = function(request,error_json, container){
+                success_func(request, []);
+                onError(request,error_json, container);
+            }
+
+            if (opts.zone_id == undefined) {
+                OpenNebula.Template.list({
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            } else {
+                OpenNebula.Template.list_in_zone({
+                    data: { zone_id: opts.zone_id },
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            }
         },
 
         "select_callback": opts.select_callback
     };
 
     return setupResourceTableSelect(section, context_id, options);
+}
+
+// Clicks the refresh button
+function refreshTemplateTableSelect(section, context_id){
+    return refreshResourceTableSelect(section, context_id);
+}
+
+// Returns an ID, or an array of IDs for opts.multiple_choice
+function retrieveTemplateTableSelect(section, context_id){
+    return retrieveResourceTableSelect(section, context_id);
+}
+
+// Clears the current selection, and selects the given IDs
+// opts.ids must be a single ID, or an array of IDs for options.multiple_choice
+// opts.names must be an array of {name, uname}
+function selectTemplateTableSelect(section, context_id, opts){
+    return selectResourceTableSelect(section, context_id, opts);
 }
 
 function generateHostTableSelect(context_id){
@@ -6230,6 +6380,7 @@ function generateHostTableSelect(context_id){
 // opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
 //                 an ID is not returned by the pool, it will be included as a
 //                 blank row
+// opts.zone_id: Retrieves elements from this zone, instead of the current one
 function setupHostTableSelect(section, context_id, opts){
 
     if(opts == undefined){
@@ -6283,49 +6434,65 @@ function setupHostTableSelect(section, context_id, opts){
         "name_index": 2,
 
         "update_fn": function(datatable){
-            OpenNebula.Host.list({
-                timeout: true,
-                success: function (request, resource_list){
-                    var list_array = [];
+            var success_func = function (request, resource_list){
+                var list_array = [];
 
-                    var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+                var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
 
-                    $.each(resource_list,function(){
-                        var add = true;
+                $.each(resource_list,function(){
+                    var add = true;
 
-                        if(opts.filter_fn){
-                            add = opts.filter_fn(this.HOST);
-                        }
+                    if(opts.filter_fn){
+                        add = opts.filter_fn(this.HOST);
+                    }
 
-                        if(opts.fixed_ids != undefined){
-                            add = (add && fixed_ids_map[this.HOST.ID]);
-                        }
+                    if(opts.fixed_ids != undefined){
+                        add = (add && fixed_ids_map[this.HOST.ID]);
+                    }
 
-                        if(add){
-                            list_array.push(hostElementArray(this));
+                    if(add){
+                        list_array.push(hostElementArray(this));
 
-                            delete fixed_ids_map[this.HOST.ID];
-                        }
-                    });
+                        delete fixed_ids_map[this.HOST.ID];
+                    }
+                });
 
-                    var n_columns = 13; // SET FOR EACH RESOURCE
+                var n_columns = 13; // SET FOR EACH RESOURCE
 
-                    $.each(fixed_ids_map, function(id,v){
-                        var empty = [];
+                $.each(fixed_ids_map, function(id,v){
+                    var empty = [];
 
-                        for(var i=0; i<=n_columns; i++){
-                            empty.push("");
-                        }
+                    for(var i=0; i<=n_columns; i++){
+                        empty.push("");
+                    }
 
-                        empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+                    empty[1] = id;  // SET FOR EACH RESOURCE, id_index
 
-                        list_array.push(empty);
-                    });
+                    list_array.push(empty);
+                });
 
-                    updateView(list_array, datatable);
-                },
-                error: onError
-            });
+                updateView(list_array, datatable);
+            }
+
+            var error_func = function(request,error_json, container){
+                success_func(request, []);
+                onError(request,error_json, container);
+            }
+
+            if (opts.zone_id == undefined) {
+                OpenNebula.Host.list({
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            } else {
+                OpenNebula.Host.list_in_zone({
+                    data: { zone_id: opts.zone_id },
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            }
         },
 
         "select_callback": opts.select_callback
@@ -6364,7 +6531,8 @@ function generateDatastoreTableSelect(context_id){
         tr("Basepath"),
         tr("TM MAD"),
         tr("DS MAD"),
-        tr("Type")
+        tr("Type"),
+        tr("Status")
     ];
 
     var options = {
@@ -6388,6 +6556,7 @@ function generateDatastoreTableSelect(context_id){
 // opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
 //                 an ID is not returned by the pool, it will be included as a
 //                 blank row
+// opts.zone_id: Retrieves elements from this zone, instead of the current one
 function setupDatastoreTableSelect(section, context_id, opts){
 
     if(opts == undefined){
@@ -6443,49 +6612,65 @@ function setupDatastoreTableSelect(section, context_id, opts){
         "uname_index": 2,
 
         "update_fn": function(datatable){
-            OpenNebula.Datastore.list({
-                timeout: true,
-                success: function (request, resource_list){
-                    var list_array = [];
+            var success_func = function (request, resource_list){
+                var list_array = [];
 
-                    var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+                var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
 
-                    $.each(resource_list,function(){
-                        var add = true;
+                $.each(resource_list,function(){
+                    var add = true;
 
-                        if(opts.filter_fn){
-                            add = opts.filter_fn(this.DATASTORE);
-                        }
+                    if(opts.filter_fn){
+                        add = opts.filter_fn(this.DATASTORE);
+                    }
 
-                        if(opts.fixed_ids != undefined){
-                            add = (add && fixed_ids_map[this.DATASTORE.ID]);
-                        }
+                    if(opts.fixed_ids != undefined){
+                        add = (add && fixed_ids_map[this.DATASTORE.ID]);
+                    }
 
-                        if(add){
-                            list_array.push(datastoreElementArray(this));
+                    if(add){
+                        list_array.push(datastoreElementArray(this));
 
-                            delete fixed_ids_map[this.DATASTORE.ID];
-                        }
-                    });
+                        delete fixed_ids_map[this.DATASTORE.ID];
+                    }
+                });
 
-                    var n_columns = 11; // SET FOR EACH RESOURCE
+                var n_columns = 12; // SET FOR EACH RESOURCE
 
-                    $.each(fixed_ids_map, function(id,v){
-                        var empty = [];
+                $.each(fixed_ids_map, function(id,v){
+                    var empty = [];
 
-                        for(var i=0; i<=n_columns; i++){
-                            empty.push("");
-                        }
+                    for(var i=0; i<=n_columns; i++){
+                        empty.push("");
+                    }
 
-                        empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+                    empty[1] = id;  // SET FOR EACH RESOURCE, id_index
 
-                        list_array.push(empty);
-                    });
+                    list_array.push(empty);
+                });
 
-                    updateView(list_array, datatable);
-                },
-                error: onError
-            });
+                updateView(list_array, datatable);
+            }
+
+            var error_func = function(request,error_json, container){
+                success_func(request, []);
+                onError(request,error_json, container);
+            }
+
+            if (opts.zone_id == undefined) {
+                OpenNebula.Datastore.list({
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            } else {
+                OpenNebula.Datastore.list_in_zone({
+                    data: { zone_id: opts.zone_id },
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            }
         },
 
         "select_callback": opts.select_callback
@@ -6778,6 +6963,508 @@ function selectSecurityGroupTableSelect(section, context_id, opts){
     return selectResourceTableSelect(section, context_id, opts);
 }
 
+function generateGroupTableSelect(context_id){
+
+    var columns = [
+        "",
+        tr("ID"),
+        tr("Name"),
+        tr("Users"),
+        tr("VMs"),
+        tr("Memory"),
+        tr("CPU")
+    ];
+
+    var options = {
+        "id_index": 1,
+        "name_index": 2,
+        "select_resource": tr("Please select a Group from the list"),
+        "you_selected": tr("You selected the following Group:"),
+        "select_resource_multiple": tr("Please select one or more groups from the list"),
+        "you_selected_multiple": tr("You selected the following groups:")
+    };
+
+    return generateResourceTableSelect(context_id, columns, options);
+}
+
+// opts.bVisible: dataTable bVisible option. If not set, the .yaml visibility will be used
+// opts.filter_fn: boolean function to filter which elements to show
+// opts.select_callback(aData, options): function called after a row is selected
+// opts.multiple_choice: boolean true to enable multiple element selection
+// opts.read_only: boolean true so user is not asked to select elements
+// opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
+//                 an ID is not returned by the pool, it will be included as a
+//                 blank row
+function setupGroupTableSelect(section, context_id, opts){
+
+    if(opts == undefined){
+        opts = {};
+    }
+
+    if(opts.bVisible == undefined){
+        // Use the settings in the conf, but removing the checkbox
+        var config = Config.tabTableColumns('groups-tab').slice(0);
+        var i = config.indexOf(0);
+
+        if(i != -1){
+            config.splice(i,1);
+        }
+
+        opts.bVisible = config;
+    }
+
+    if(opts.multiple_choice == undefined){
+        opts.multiple_choice = false;
+    }
+
+    var fixed_ids_map_orig = {};
+
+    if(opts.fixed_ids != undefined){
+        $.each(opts.fixed_ids,function(){
+            fixed_ids_map_orig[this] = true;
+        });
+    }
+
+    var options = {
+        "dataTable_options": {
+          "bAutoWidth":false,
+          "iDisplayLength": 4,
+          "sDom" : '<"H">t<"F"p>',
+          "bRetrieve": true,
+          "bSortClasses" : false,
+          "bDeferRender": true,
+          "aoColumnDefs": [
+              { "sWidth": "35px", "aTargets": [0] },
+              { "bVisible": true, "aTargets": opts.bVisible},
+              { "bVisible": false, "aTargets": ['_all']}
+            ]
+        },
+
+        "multiple_choice": opts.multiple_choice,
+        "read_only": opts.read_only,
+        "fixed_ids": opts.fixed_ids,
+
+        "id_index": 1,
+        "name_index": 2,
+
+        "update_fn": function(datatable){
+            OpenNebula.Group.list({
+                timeout: true,
+                success: function (request, resource_list){
+                    var list_array = [];
+
+                    var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+
+                    $.each(resource_list,function(){
+                        var add = true;
+
+                        if(opts.filter_fn){
+                            add = opts.filter_fn(this.GROUP);
+                        }
+
+                        if(opts.fixed_ids != undefined){
+                            add = (add && fixed_ids_map[this.GROUP.ID]);
+                        }
+
+                        if(add){
+                            list_array.push(groupElementArray(this));
+
+                            delete fixed_ids_map[this.GROUP.ID];
+                        }
+                    });
+
+                    var n_columns = 7; // SET FOR EACH RESOURCE
+
+                    $.each(fixed_ids_map, function(id,v){
+                        var empty = [];
+
+                        for(var i=0; i<=n_columns; i++){
+                            empty.push("");
+                        }
+
+                        empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+
+                        list_array.push(empty);
+                    });
+
+                    updateView(list_array, datatable);
+                },
+                error: onError
+            });
+        },
+
+        "select_callback": opts.select_callback
+    };
+
+    return setupResourceTableSelect(section, context_id, options);
+}
+
+// Clicks the refresh button
+function refreshGroupTableSelect(section, context_id){
+    return refreshResourceTableSelect(section, context_id);
+}
+
+// Returns an ID, or an array of IDs for opts.multiple_choice
+function retrieveGroupTableSelect(section, context_id){
+    return retrieveResourceTableSelect(section, context_id);
+}
+
+// Clears the current selection, and selects the given IDs
+// opts.ids must be a single ID, or an array of IDs for options.multiple_choice
+// opts.names must be an array of {name, uname}
+function selectGroupTableSelect(section, context_id, opts){
+    return selectResourceTableSelect(section, context_id, opts);
+}
+
+function generateUserTableSelect(context_id){
+
+    var columns = [
+        "",
+        tr("ID"),
+        tr("Name"),
+        tr("Group"),
+        tr("Auth driver"),
+        tr("VMs"),
+        tr("Memory"),
+        tr("CPU"),
+        tr("Group ID"),
+        tr("Hidden User Data")
+    ];
+
+    var options = {
+        "id_index": 1,
+        "name_index": 2,
+        "select_resource": tr("Please select a User from the list"),
+        "you_selected": tr("You selected the following User:"),
+        "select_resource_multiple": tr("Please select one or more users from the list"),
+        "you_selected_multiple": tr("You selected the following users:")
+    };
+
+    return generateResourceTableSelect(context_id, columns, options);
+}
+
+// opts.bVisible: dataTable bVisible option. If not set, the .yaml visibility will be used
+// opts.filter_fn: boolean function to filter which elements to show
+// opts.select_callback(aData, options): function called after a row is selected
+// opts.multiple_choice: boolean true to enable multiple element selection
+// opts.read_only: boolean true so user is not asked to select elements
+// opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
+//                 an ID is not returned by the pool, it will be included as a
+//                 blank row
+// opts.admin_ids: Array of User IDs that will be marked as admin
+function setupUserTableSelect(section, context_id, opts){
+
+    if(opts == undefined){
+        opts = {};
+    }
+
+    if(opts.bVisible == undefined){
+        // Use the settings in the conf, but removing the checkbox
+        var config = Config.tabTableColumns('users-tab').slice(0);
+        var i = config.indexOf(0);
+
+        if(i != -1){
+            config.splice(i,1);
+        }
+
+        opts.bVisible = config;
+    }
+
+    if(opts.multiple_choice == undefined){
+        opts.multiple_choice = false;
+    }
+
+    var fixed_ids_map_orig = {};
+
+    if(opts.fixed_ids != undefined){
+        $.each(opts.fixed_ids,function(){
+            fixed_ids_map_orig[this] = true;
+        });
+    }
+
+    var admin_ids_map = {};
+
+    if(opts.admin_ids != undefined){
+        $.each(opts.admin_ids,function(){
+            admin_ids_map[this] = true;
+        });
+    }
+
+    var options = {
+        "dataTable_options": {
+          "bAutoWidth":false,
+          "iDisplayLength": 4,
+          "sDom" : '<"H">t<"F"p>',
+          "bRetrieve": true,
+          "bSortClasses" : false,
+          "bDeferRender": true,
+          "aoColumnDefs": [
+              { "sWidth": "35px", "aTargets": [0] },
+              { "bVisible": true, "aTargets": opts.bVisible},
+              { "bVisible": false, "aTargets": ['_all']}
+            ]
+        },
+
+        "multiple_choice": opts.multiple_choice,
+        "read_only": opts.read_only,
+        "fixed_ids": opts.fixed_ids,
+
+        "id_index": 1,
+        "name_index": 2,
+
+        "update_fn": function(datatable){
+            OpenNebula.User.list({
+                timeout: true,
+                success: function (request, resource_list){
+                    var list_array = [];
+
+                    var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+
+                    $.each(resource_list,function(){
+                        var add = true;
+
+                        if(opts.filter_fn){
+                            add = opts.filter_fn(this.USER);
+                        }
+
+                        if(opts.fixed_ids != undefined){
+                            add = (add && fixed_ids_map[this.USER.ID]);
+                        }
+
+                        if(add){
+                            var user_arr = userElementArray(this);
+
+                            if (opts.admin_ids != undefined){
+
+                                if (admin_ids_map[this.USER.ID]){
+                                    user_arr[2] =
+                                        ('<i class="fa fa-star fa-fw"></i> ' +
+                                        user_arr[2]) // NAME INDEX
+                                } else {
+                                    user_arr[2] =
+                                        ('<i class="fa fa-fw"></i> ' +
+                                        user_arr[2]) // NAME INDEX
+                                }
+                            }
+
+                            list_array.push(user_arr);
+
+                            delete fixed_ids_map[this.USER.ID];
+                        }
+                    });
+
+                    var n_columns = 10; // SET FOR EACH RESOURCE
+
+                    $.each(fixed_ids_map, function(id,v){
+                        var empty = [];
+
+                        for(var i=0; i<=n_columns; i++){
+                            empty.push("");
+                        }
+
+                        empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+
+                        list_array.push(empty);
+                    });
+
+                    updateView(list_array, datatable);
+                },
+                error: onError
+            });
+        },
+
+        "select_callback": opts.select_callback
+    };
+
+    return setupResourceTableSelect(section, context_id, options);
+}
+
+// Clicks the refresh button
+function refreshUserTableSelect(section, context_id){
+    return refreshResourceTableSelect(section, context_id);
+}
+
+// Returns an ID, or an array of IDs for opts.multiple_choice
+function retrieveUserTableSelect(section, context_id){
+    return retrieveResourceTableSelect(section, context_id);
+}
+
+// Clears the current selection, and selects the given IDs
+// opts.ids must be a single ID, or an array of IDs for options.multiple_choice
+// opts.names must be an array of {name, uname}
+function selectUserTableSelect(section, context_id, opts){
+    return selectResourceTableSelect(section, context_id, opts);
+}
+
+function generateClusterTableSelect(context_id){
+
+    var columns = [
+        "",
+        tr("ID"),
+        tr("Name"),
+        tr("Hosts"),
+        tr("VNets"),
+        tr("Datastores")
+    ];
+
+    var options = {
+        "id_index": 1,
+        "name_index": 2,
+        "select_resource": tr("Please select a Cluster from the list"),
+        "you_selected": tr("You selected the following Cluster:"),
+        "select_resource_multiple": tr("Please select one or more clusters from the list"),
+        "you_selected_multiple": tr("You selected the following clusters:")
+    };
+
+    return generateResourceTableSelect(context_id, columns, options);
+}
+
+// opts.bVisible: dataTable bVisible option. If not set, the .yaml visibility will be used
+// opts.filter_fn: boolean function to filter which elements to show
+// opts.select_callback(aData, options): function called after a row is selected
+// opts.multiple_choice: boolean true to enable multiple element selection
+// opts.read_only: boolean true so user is not asked to select elements
+// opts.fixed_ids: Array of IDs to show. Any other ID will be filtered out. If
+//                 an ID is not returned by the pool, it will be included as a
+//                 blank row
+// opts.zone_id: Retrieves elements from this zone, instead of the current one
+function setupClusterTableSelect(section, context_id, opts){
+
+    if(opts == undefined){
+        opts = {};
+    }
+
+    if(opts.bVisible == undefined){
+        // Use the settings in the conf, but removing the checkbox
+        var config = Config.tabTableColumns('clusters-tab').slice(0);
+        var i = config.indexOf(0);
+
+        if(i != -1){
+            config.splice(i,1);
+        }
+
+        opts.bVisible = config;
+    }
+
+    if(opts.multiple_choice == undefined){
+        opts.multiple_choice = false;
+    }
+
+    var fixed_ids_map_orig = {};
+
+    if(opts.fixed_ids != undefined){
+        $.each(opts.fixed_ids,function(){
+            fixed_ids_map_orig[this] = true;
+        });
+    }
+
+    var options = {
+        "dataTable_options": {
+          "bAutoWidth":false,
+          "iDisplayLength": 4,
+          "sDom" : '<"H">t<"F"p>',
+          "bRetrieve": true,
+          "bSortClasses" : false,
+          "bDeferRender": true,
+          "aoColumnDefs": [
+              { "sWidth": "35px", "aTargets": [0] },
+              { "bVisible": true, "aTargets": opts.bVisible},
+              { "bVisible": false, "aTargets": ['_all']}
+            ]
+        },
+
+        "multiple_choice": opts.multiple_choice,
+        "read_only": opts.read_only,
+        "fixed_ids": opts.fixed_ids,
+
+        "id_index": 1,
+        "name_index": 2,
+
+        "update_fn": function(datatable){
+            var success_func = function (request, resource_list){
+                var list_array = [];
+
+                var fixed_ids_map = $.extend({}, fixed_ids_map_orig);
+
+                $.each(resource_list,function(){
+                    var add = true;
+
+                    if(opts.filter_fn){
+                        add = opts.filter_fn(this.CLUSTER);
+                    }
+
+                    if(opts.fixed_ids != undefined){
+                        add = (add && fixed_ids_map[this.CLUSTER.ID]);
+                    }
+
+                    if(add){
+                        list_array.push(clusterElementArray(this));
+
+                        delete fixed_ids_map[this.CLUSTER.ID];
+                    }
+                });
+
+                var n_columns = 6; // SET FOR EACH RESOURCE
+
+                $.each(fixed_ids_map, function(id,v){
+                    var empty = [];
+
+                    for(var i=0; i<=n_columns; i++){
+                        empty.push("");
+                    }
+
+                    empty[1] = id;  // SET FOR EACH RESOURCE, id_index
+
+                    list_array.push(empty);
+                });
+
+                updateView(list_array, datatable);
+            }
+
+            var error_func = function(request,error_json, container){
+                success_func(request, []);
+                onError(request,error_json, container);
+            }
+
+            if (opts.zone_id == undefined) {
+                OpenNebula.Cluster.list({
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            } else {
+                OpenNebula.Cluster.list_in_zone({
+                    data: { zone_id: opts.zone_id },
+                    timeout: true,
+                    success: success_func,
+                    error: error_func
+                });
+            }
+        },
+
+        "select_callback": opts.select_callback
+    };
+
+    return setupResourceTableSelect(section, context_id, options);
+}
+
+// Clicks the refresh button
+function refreshClusterTableSelect(section, context_id){
+    return refreshResourceTableSelect(section, context_id);
+}
+
+// Returns an ID, or an array of IDs for opts.multiple_choice
+function retrieveClusterTableSelect(section, context_id){
+    return retrieveResourceTableSelect(section, context_id);
+}
+
+// Clears the current selection, and selects the given IDs
+// opts.ids must be a single ID, or an array of IDs for options.multiple_choice
+// opts.names must be an array of {name, uname}
+function selectClusterTableSelect(section, context_id, opts){
+    return selectResourceTableSelect(section, context_id, opts);
+}
+
 function generateResourceTableSelect(context_id, columns, options){
     if (!options.select_resource){
         options.select_resource = tr("Please select a resource from the list");
@@ -6801,11 +7488,11 @@ function generateResourceTableSelect(context_id, columns, options){
 
     var html =
     '<div class="row">\
-      <div class="large-8 columns">\
+      <div class="large-8 small-2 columns">\
          <a id="refresh_button_'+context_id+'" href="#" class="button small radius secondary"><i class="fa fa-refresh" /></a>\
       </div>\
-      <div class="large-4 columns">\
-        <input id="'+context_id+'_search" class="search" type="text" placeholder="'+tr("Search")+'"/>\
+      <div class="large-4 small-10 columns">\
+        <input id="'+context_id+'_search" class="search" type="search" placeholder="'+tr("Search")+'"/>\
       </div>\
     </div>\
     <div class="row">\
@@ -6819,7 +7506,7 @@ function generateResourceTableSelect(context_id, columns, options){
     </div>\
     <div class="row">\
       <div class="large-12 columns" id="selected_ids_row_'+context_id+'">\
-        <span id="select_resource_'+context_id+'" class="radius secondary label">'+options.select_resource+'</span>\
+        <label for="selected_resource_id_'+context_id+'" id="select_resource_'+context_id+'" class="radius secondary label">'+options.select_resource+'</label>\
         <span id="selected_resource_'+context_id+'" class="radius secondary label" style="display: none;">'+options.you_selected+'</span>\
         <span id="select_resource_multiple_'+context_id+'" class="radius secondary label" style="display: none;">'+options.select_resource_multiple+'</span>\
         <span id="selected_resource_multiple_'+context_id+'" class="radius secondary label" style="display: none;">'+options.you_selected_multiple+'</span>\
@@ -6967,13 +7654,30 @@ function setupResourceTableSelect(section, context_id, options) {
         $(section).on("click", '#selected_ids_row_'+context_id+' span.fa.fa-times', function() {
             var row_id = $(this).parent("span").attr('row_id');
 
+            var found = false;
+
             // TODO: improve preformance, linear search
             $.each(dataTable_select.fnGetData(), function(index, row){
                 if(row[options.id_index] == row_id){
+                    found = true;
                     row_click(dataTable_select.fnGetNodes(index), row);
                     return false;
                 }
             });
+
+            if (!found){
+                var ids = $('#selected_ids_row_'+context_id, section).data("ids");
+                delete ids[row_id];
+                $('#selected_ids_row_'+context_id+' span[row_id="'+row_id+'"]', section).remove();
+
+                if ($.isEmptyObject(ids)){
+                    $('#selected_resource_multiple_'+context_id, section).hide();
+                    $('#select_resource_multiple_'+context_id, section).show();
+                } else {
+                    $('#selected_resource_multiple_'+context_id, section).show();
+                    $('#select_resource_multiple_'+context_id, section).hide();
+                }
+            }
 
         });
     }
@@ -7470,8 +8174,11 @@ function sg_rule_to_st(rule){
     @param opts.id key of the OpenNebula Template
     @param opts.label name to be shown as label
     @param opts.tooltip 
-    @param opts.options array of options for the select
+    @param opts.options 
+        array of options for the select
+        the option can be a string or an object {name: XXX, value: XXX}
     @param opts.custom boolean, provide a text input for a custom value (default: false)
+    @param opts.no_empty_option do not provide an empty option
     @return {string}
 */
 function generateValueSelect(opts){
@@ -7487,10 +8194,16 @@ function generateValueSelect(opts){
     str += '<div class="custom_select_div large-12 columns">'+ 
             '<select name="' + opts.id + '_select" class="custom_select">';
 
-    str += '<option id="" name="" value=""></option>';
+    if (!opts.no_empty_option) {
+        str += '<option id="" name="" value=""></option>';
+    }
 
     $.each(opts.options, function(index, option){
-        str += '<option value="' + option + '">' + option + '</option>';
+        if (option.name) {
+            str += '<option value="' + option.value + '">' + option.name + '</option>';
+        } else {
+            str += '<option value="' + option + '">' + option + '</option>';
+        }
     });
 
     if (opts.custom) {
@@ -7501,6 +8214,7 @@ function generateValueSelect(opts){
     str += '</select>';
     str += '</div>';
 
+    $(document).off("change", ".custom_select_input");
     $(document).on("change", ".custom_select_input", function(){
         var select = $(".custom_select", $(this).closest(".custom_select_container"));
         select.val($(this).val());
@@ -7510,6 +8224,7 @@ function generateValueSelect(opts){
         select.change();
     });
 
+    $(document).off("change", ".custom_select");
     $(document).on("change", ".custom_select", function(){
         var container = $(this).closest(".custom_select_container");
         if ($(this).val() == "custom") {
@@ -7554,70 +8269,132 @@ function getInternetExplorerVersion(){
     return rv;
 }
 
+function retrieveLastHistoryRecord(vm_info) {
+    if (vm_info.HISTORY_RECORDS && vm_info.HISTORY_RECORDS.HISTORY) {
+        var history = vm_info.HISTORY_RECORDS.HISTORY;
+        if (history.constructor == Array){
+            return history[history.length-1];
+        } else {
+            return history;
+        };
+    } else {
+        return null;
+    }
+}
+
 // Return true if the VM has a hybrid section
-function calculate_isHybrid(vm_info){
-    return vm_info.USER_TEMPLATE.HYPERVISOR &&
-       (vm_info.USER_TEMPLATE.HYPERVISOR.toLowerCase() == "vcenter"
-       || vm_info.USER_TEMPLATE.HYPERVISOR.toLowerCase() == "ec2"
-       || vm_info.USER_TEMPLATE.HYPERVISOR.toLowerCase() == "azure"
-       || vm_info.USER_TEMPLATE.HYPERVISOR.toLowerCase() == "softlayer")
+function isNICGraphsSupported(vm_info){
+    var history = retrieveLastHistoryRecord(vm_info)
+    if (history) {
+        return $.inArray(history.VMMMAD, ['vcenter', 'ec2', 'az', 'sl']) == -1;
+    } else {
+        return false;
+    }
+}
+
+function isNICAttachSupported(vm_info){
+    var history = retrieveLastHistoryRecord(vm_info)
+    if (history) {
+        return $.inArray(history.VMMMAD, ['ec2', 'az', 'sl']) == -1;
+    } else {
+        return false;
+    }
+}
+
+var externalIPsAttrs = [
+        'GUEST_IP',
+        'AWS_IP_ADDRESS',
+        'AZ_IPADDRESS',
+        'SL_PRIMARYIPADDRESS'
+    ]
+
+var externalNetworkAttrs = [
+        'GUEST_IP',
+        'AWS_IP_ADDRESS',
+        'AWS_DNS_NAME',
+        'AWS_PRIVATE_IP_ADDRESS',
+        'AWS_PRIVATE_DNS_NAME',
+        'AWS_SECURITY_GROUPS',
+        'AZ_IPADDRESS',
+        'SL_PRIMARYIPADDRESS'
+    ]
+
+function retrieveExternalIPs(vm_info) {
+    var template = vm_info.TEMPLATE;
+    var ips = {};
+    var externalIP;
+
+    $.each(externalIPsAttrs, function(index, IPAttr){
+        externalIP = template[IPAttr];
+        if (externalIP) {
+            ips[IPAttr] = externalIP;
+        }
+    });
+
+    return ips;
+}
+
+function retrieveExternalNetworkAttrs(vm_info) {
+    var template = vm_info.TEMPLATE;
+    var ips = {};
+    var externalAttr;
+
+    $.each(externalNetworkAttrs, function(index, attr){
+        externalAttr = template[attr];
+        if (externalAttr) {
+            ips[attr] = externalAttr;
+        }
+    });
+
+    return ips;
 }
 
 // Return the IP or several IPs of a VM
 function ip_str(vm, divider){
     var divider = divider || "<br>"
-    var isHybrid = calculate_isHybrid(vm);
     var nic = vm.TEMPLATE.NIC;
+    var ips = [];
 
-    if (nic == undefined) {
-        if (isHybrid) {
-            switch(vm.USER_TEMPLATE.HYPERVISOR.toLowerCase()) {
-                case "vcenter":
-                    ip = vm.TEMPLATE.GUEST_IP?vm.TEMPLATE.GUEST_IP:"--";
-                    break;
-                case "ec2":
-                    ip = vm.TEMPLATE.IP_ADDRESS?vm.TEMPLATE.IP_ADDRESS:"--";
-                    break;
-                case "azure":
-                    ip = vm.TEMPLATE.IPADDRESS?vm.TEMPLATE.IPADDRESS:"--";
-                    break;
-                case "softlayer":
-                    ip = vm.TEMPLATE.PRIMARYIPADDRESS?vm.TEMPLATE.PRIMARYIPADDRESS:"--";
-                    break;
-                default:
-                    ip = "--";
-            }
-        } else {
-            return '--';
-        }
-    } else {
+    if (nic != undefined) {
         if (!$.isArray(nic)){
             nic = [nic];
         }
 
-        ip = '';
         $.each(nic, function(index,value){
             if (value.IP){
-                ip += value.IP+divider;
+                ips.push(value.IP);
             }
 
             if (value.IP6_GLOBAL){
-                ip += value.IP6_GLOBAL+divider;
+                ips.push(value.IP6_GLOBAL);
             }
 
             if (value.IP6_ULA){
-                ip += value.IP6_ULA+divider;
+                ips.push(value.IP6_ULA);
             }
         });
     }
 
-    return ip;
+    var template = vm.TEMPLATE;
+    var externalIP;
+    $.each(externalIPsAttrs, function(index, IPAttr){
+        externalIP = template[IPAttr];
+        if (externalIP && ($.inArray(externalIP, ips) == -1)) {
+            ips.push(externalIP);
+        }
+    })
+
+    if (ips.length > 0) {
+        return ips.join(divider);
+    } else {
+        return '--';
+    }
 };
 
 // returns true if the vnc button should be enabled
 function enableVnc(vm){
     var graphics = vm.TEMPLATE.GRAPHICS;
-    var state = OpenNebula.Helper.resource_state("vm_lcm",vm.LCM_STATE);
+    var state = parseInt(vm.LCM_STATE);
 
     return (graphics &&
         graphics.TYPE &&
@@ -7627,10 +8404,78 @@ function enableVnc(vm){
 
 function enableSPICE(vm){
     var graphics = vm.TEMPLATE.GRAPHICS;
-    var state = OpenNebula.Helper.resource_state("vm_lcm",vm.LCM_STATE);
+    var state = parseInt(vm.LCM_STATE);
 
     return (graphics &&
         graphics.TYPE &&
         graphics.TYPE.toLowerCase() == "spice" &&
         $.inArray(state, VNCstates)!=-1);
 }
+
+var view_types = {
+    advanced : {
+        name: 'Advanced Layout',
+        description : tr("This layout exposes a complete view of the cloud, allowing administrators and advanced users to have full control of any physical or virtual resource of the cloud."),
+        preview: "advanced_layout.png"
+    },
+    cloud : {
+        name: 'Cloud Layout',
+        description : tr("This layout exposes a simplified version of the cloud where group administrators and cloud end-users will be able to manage any virtual resource of the cloud, without taking care of the physical resources management."),
+        preview: "cloud_layout.png"
+    },
+    vcenter : {
+        name: 'vCenter Layout',
+        description : tr("Set of views to present the valid operation against a vCenter infrastructure"),
+        preview: "vcenter_layout.png"
+    },
+    other : {
+        name: 'Other Layouts',
+        description : '',
+        preview: null
+    }
+};
+
+var views_info = {
+    admin : {
+        id: 'admin',
+        name: "Admin",
+        description: tr("This view provides full control of the cloud"),
+        type: "advanced"
+    },
+    user : {
+        id: 'user',
+        name: "User",
+        description: tr("In this view users will not be able to manage nor retrieve the hosts and clusters of the cloud. They will be able to see Datastores and Virtual Networks in order to use them when creating a new Image or Virtual Machine, but they will not be able to create new ones."),
+        type: "advanced"
+    },
+    groupadmin : {
+        id: 'groupadmin',
+        name: "Group Admin",
+        description: tr("This view provides control of all the resources belonging to a group, but with no access to resources outside that group, that is, restricted to the physical and virtual resources of the group. This view features the ability to create new users within the group as well as set and keep track of user quotas."),
+        type: "cloud"
+    },
+    cloud : {
+        id: 'cloud',
+        name: "Cloud",
+        description: tr("This is a simplified view mainly intended for user that just require a portal where they can provision new virtual machines easily from pre-defined Templates."),
+        type: "cloud"
+    },
+    admin_vcenter : {
+        id: 'admin_vcenter',
+        name: "Admin vCenter",
+        description: tr("View designed to present the valid operations against a vCenter infrastructure to a cloud administrator"),
+        type: "vcenter"
+    },
+    groupadmin_vcenter : {
+        id: 'groupadmin_vcenter',
+        name: "Group Admin vCenter",
+        description: tr("View designed to present the valid operations agaist a vCenter infrastructure to a group administrator"),
+        type: "vcenter"
+    },
+    cloud_vcenter : {
+        id: 'cloud_vcenter',
+        name: "Cloud vCenter",
+        description: tr("View designed to present the valid operations against a vCenter infrastructure to a cloud consumer"),
+        type: "vcenter"
+    }
+};

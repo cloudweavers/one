@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -65,6 +65,12 @@ let RC=RC+$?
 let RC=RC+$?
 
 ./test.sh DocumentTest
+let RC=RC+$?
+
+./test.sh VdcTest
+let RC=RC+$?
+
+./test.sh SecurityGroupTest
 let RC=RC+$?
 
 exit $RC

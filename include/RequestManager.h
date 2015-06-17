@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -50,7 +50,8 @@ public:
             int _keepalive_max_conn,
             int _timeout,
             const string _xml_log_file,
-            const string call_log_format);
+            const string call_log_format,
+            int message_size);
 
     ~RequestManager(){};
 

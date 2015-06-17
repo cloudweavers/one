@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -25,22 +25,29 @@ using namespace std;
 
 extern "C" void * dm_action_loop(void *arg);
 
+//Forward definitions
+class TransferManager;
+class LifeCycleManager;
+class VirtualMachineManager;
+class ImageManager;
+
 class DispatchManager : public ActionListener
 {
 public:
 
-    DispatchManager(
-        VirtualMachinePool *        _vmpool,
-        HostPool *                  _hpool):
-            hpool(_hpool),
-            vmpool(_vmpool)
+    DispatchManager():
+            hpool(0), vmpool(0), tm(0), vmm(0), lcm(0), imagem(0)
     {
         am.addListener(this);
     };
 
-    ~DispatchManager()
-    {}
-    ;
+    ~DispatchManager(){};
+
+     /**
+	  * Initializes internal pointers to other managers. Must be called when
+	  * all the other managers exist in Nebula::instance
+	  */
+    void init_managers();
 
     enum Actions
     {
@@ -49,7 +56,6 @@ public:
         UNDEPLOY_SUCCESS,  /**< Send by LCM when a VM is undeployed and saved*/
         POWEROFF_SUCCESS, /**< Send by LCM when a VM is powered off */
         DONE,           /**< Send by LCM when a VM is shut down*/
-        FAILED,         /**< Send by LCM when one of the execution steps fails*/
         RESUBMIT,       /**< Send by LCM when a VM is ready for resubmission*/
         FINALIZE
     };
@@ -95,6 +101,15 @@ public:
         VirtualMachine * vm);
 
     /**
+     *  Sets an imported VM to RUNNING state, a history record MUST be added,
+     *  and the VM MUST be locked.
+     *    @param vm pointer to a VirtualMachine with its mutex locked.
+     *    @return 0 on success
+     */
+    int import (
+        VirtualMachine * vm);
+
+    /**
      *  Migrates a VM. The following actions must be performed before calling
      *  this function:
      *    - Lock the VM mutex.
@@ -125,11 +140,14 @@ public:
     /**
      *  Shuts down a VM.
      *    @param vid VirtualMachine identification
+     *    @param hard True to force the shutdown (cancel instead of shutdown)
      *    @return 0 on success, -1 if the VM does not exits or -2 if the VM is
      *    in a wrong a state
      */
     int shutdown (
-        int vid);
+        int     vid,
+        bool    hard,
+        string& error_str);
 
     /**
      *  Shuts down a VM, but it is saved in the system DS instead of destroyed.
@@ -139,8 +157,9 @@ public:
      *    in a wrong a state
      */
     int undeploy (
-        int vid,
-        bool hard);
+        int     vid,
+        bool    hard,
+        string& error_str);
 
     /**
      *  Powers off a VM.
@@ -150,8 +169,9 @@ public:
      *    in a wrong a state
      */
     int poweroff (
-        int vid,
-        bool hard);
+        int     vid,
+        bool    hard,
+        string& error_str);
 
     /**
      *  Holds a VM.
@@ -160,7 +180,8 @@ public:
      *    in a wrong a state
      */
     int hold(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Releases a VM.
@@ -169,7 +190,8 @@ public:
      *    in a wrong a state
      */
     int release(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Stops a VM.
@@ -178,16 +200,8 @@ public:
      *    in a wrong a state
      */
     int stop(
-        int vid);
-
-    /**
-     *  Cancels a VM.
-     *    @param vid VirtualMachine identification
-     *    @return 0 on success, -1 if the VM does not exits or -2 if the VM is
-     *    in a wrong a state
-     */
-    int cancel(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Suspends a VM.
@@ -196,7 +210,8 @@ public:
      *    in a wrong a state
      */
     int suspend(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Resumes a VM.
@@ -205,16 +220,8 @@ public:
      *    in a wrong a state
      */
     int resume(
-        int vid);
-
-    /**
-     * Restart a previusly deployed VM.
-     *    @param vid VirtualMachine identification
-     *    @return 0 on success, -1 if the VM does not exits or -2 if the VM is
-     *    in a wrong a state
-     */
-    int restart(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Ends a VM life cycle inside ONE.
@@ -223,7 +230,8 @@ public:
      *    in a wrong a state
      */
     int finalize(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Moves a VM to PENDING state preserving any resource (i.e. leases) and id
@@ -232,25 +240,20 @@ public:
      *    in a wrong a state
      */
     int resubmit(
-        int vid);
+        int     vid,
+        string& error_str);
 
     /**
      *  Reboots a VM preserving any resource and RUNNING state
      *    @param vid VirtualMachine identification
+     *    @param hard True to force the shutdown (cancel instead of shutdown)
      *    @return 0 on success, -1 if the VM does not exits or -2 if the VM is
      *    in a wrong a state
      */
     int reboot(
-        int vid);
-
-    /**
-     *  Resets a VM preserving any resource and RUNNING state
-     *    @param vid VirtualMachine identification
-     *    @return 0 on success, -1 if the VM does not exits or -2 if the VM is
-     *    in a wrong a state
-     */
-    int reset(
-        int vid);
+        int     vid,
+        bool    hard,
+        string& error_str);
 
     /**
      *  Set the re-scheduling flag for the VM (must be in RUNNING state)
@@ -261,8 +264,9 @@ public:
      *    in a wrong a state
      */
     int resched(
-        int  vid,
-        bool do_resched);
+        int     vid,
+        bool    do_resched,
+        string& error_str);
 
     /**
      *  Starts the attach disk action.
@@ -359,6 +363,56 @@ public:
         int         snap_id,
         string&     error_str);
 
+    /**
+     * Starts the disk snapshot create action
+     *
+     * @param vid VirtualMachine identification
+     * @param did DISK identification
+     * @param tag Description for the new snapshot
+     * @param snap_id Will contain the new snapshot ID
+     * @param error_str Error reason, if any
+     *
+     * @return 0 on success, -1 otherwise
+     */
+    int disk_snapshot_create(
+        int           vid,
+        int           did,
+        const string& tag,
+        int&          snap_id,
+        string&       error_str);
+
+    /**
+     * Reverts the disk state to a previous snapshot
+     *
+     * @param vid VirtualMachine identification
+     * @param did DISK identification
+     * @param snap_id Snapshot to be restored
+     * @param error_str Error reason, if any
+     *
+     * @return 0 on success, -1 otherwise
+     */
+    int disk_snapshot_revert(
+        int         vid,
+        int         did,
+        int         snap_id,
+        string&     error_str);
+
+    /**
+     * Deletes a disk snapshot
+     *
+     * @param vid VirtualMachine identification
+     * @param did DISK identification
+     * @param snap_id Snapshot to be restored
+     * @param error_str Error reason, if any
+     *
+     * @return 0 on success, -1 otherwise
+     */
+    int disk_snapshot_delete(
+        int           vid,
+        int           did,
+        int           snap_id,
+        string&       error_str);
+
 private:
     /**
      *  Thread id for the Dispatch Manager
@@ -374,6 +428,26 @@ private:
      *  Pointer to the Virtual Machine Pool, to access hosts
      */
     VirtualMachinePool *    vmpool;
+
+	/**
+     * Pointer to TransferManager
+     */
+	TransferManager *       tm;
+
+	/**
+	 * Pointer to VirtualMachineManager
+	 */
+	VirtualMachineManager * vmm;
+
+	/**
+	 * Pointer to LifeCycleManager
+	 */
+	LifeCycleManager *       lcm;
+
+	/**
+	 * Pointer to ImageManager
+	 */
+	ImageManager *			imagem;
 
     /**
      *  Action engine for the Manager
@@ -415,8 +489,6 @@ private:
     void  poweroff_success_action(int vid);
 
     void  done_action(int vid);
-
-    void  failed_action(int vid);
 
     void  resubmit_action(int vid);
 };

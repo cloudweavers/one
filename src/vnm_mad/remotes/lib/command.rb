@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -24,7 +24,7 @@ module VNMNetwork
         # Return the command to talk to the Xen hypervisor xm or xl for 
         # Xen 3 and 4
         def self.get_xen_command
-            if system("ps axuww | grep -v grep | grep '\\bxen\\b'")
+            if system("ps axuww | grep -v grep | grep '\\bxend\\b'")
                 "sudo xm"
             else
                 "sudo xl"

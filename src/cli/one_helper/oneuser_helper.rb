@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -179,7 +179,7 @@ class OneUserHelper < OpenNebulaHelper::OneHelper
 
         user = OpenNebula::User.new(User.build_xml, login_client)
 
-        token_oned = user.login(username, token, options[:time])
+        token_oned = user.login(username, "", options[:time])
 
         return -1, token_oned.message if OpenNebula.is_error?(token_oned)
 

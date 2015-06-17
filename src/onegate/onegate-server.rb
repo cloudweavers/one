@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -81,8 +81,6 @@ end
 
 set :cloud_auth, $cloud_auth
 
-$flow_client = Service::Client.new(:user_agent => USER_AGENT)
-
 helpers do
     def authenticate(env, params)
         begin
@@ -139,6 +137,29 @@ helpers do
 
         service.body
     end
+
+    def parse_json(json_str, root_element)
+        begin
+            hash = JSON.parse(json_str)
+        rescue Exception => e
+            return OpenNebula::Error.new(e.message)
+        end
+
+        if hash.has_key?(root_element)
+            return hash[root_element]
+        else
+            return OpenNebula::Error.new("Error parsing JSON: Wrong resource type")
+        end
+    end
+
+    def check_permissions(resource, action)
+        permissions = settings.config[:permissions]
+        unless permissions && permissions[resource] && permissions[resource][action]
+            error_msg = "Action (#{action}) on resource (#{resource}) not supported"
+            logger.error {error_msg} 
+            halt 403, error_msg
+        end
+    end
 end
 
 NIC_VALID_KEYS = %w(IP IP6_LINK IP6_SITE IP6_GLOBAL NETWORK MAC)
@@ -149,7 +170,7 @@ def build_vm_hash(vm_hash)
 
     if vm_hash["TEMPLATE"]["NIC"]
         [vm_hash["TEMPLATE"]["NIC"]].flatten.each do |nic|
-            nics << nic.select{|k,v| NIC_VALID_KEYS.include?(k)}
+            nics << Hash[nic.select{|k,v| NIC_VALID_KEYS.include?(k)}]
         end
     end
 
@@ -157,9 +178,11 @@ def build_vm_hash(vm_hash)
         "VM" => {
             "NAME"          => vm_hash["NAME"],
             "ID"            => vm_hash["ID"],
-            "USER_TEMPLATE" => vm_hash["USER_TEMPLATE"].select {|k,v|
+            "STATE"         => vm_hash["STATE"],
+            "LCM_STATE"     => vm_hash["LCM_STATE"],
+            "USER_TEMPLATE" => Hash[vm_hash["USER_TEMPLATE"].select {|k,v|
                                     !USER_TEMPLATE_INVALID_KEYS.include?(k)
-                                },
+                                }],
             "TEMPLATE"  => {
                 "NIC" => nics
             }
@@ -177,6 +200,7 @@ def build_service_hash(service_hash)
     service_info = {
         "name"  => service_hash["DOCUMENT"]["NAME"],
         "id"    => service_hash["DOCUMENT"]["ID"],
+        "state" => service_hash["DOCUMENT"]["TEMPLATE"]["BODY"]["state"],
         "roles" => []
     }
 
@@ -228,6 +252,8 @@ get '/' do
 end
 
 put '/vm' do
+    check_permissions(:vm, :update)
+
     client = authenticate(request.env, params)
 
     halt 401, "Not authorized" if client.nil?
@@ -247,6 +273,8 @@ put '/vm' do
 end
 
 get '/vm' do
+    check_permissions(:vm, :show)
+
     client = authenticate(request.env, params)
 
     halt 401, "Not authorized" if client.nil?
@@ -261,6 +289,8 @@ get '/vm' do
 end
 
 get '/service' do
+    check_permissions(:service, :show)
+
     client = authenticate(request.env, params)
 
     halt 401, "Not authorized" if client.nil?
@@ -296,11 +326,188 @@ get '/service' do
     [200, response.to_json]
 end
 
-#############
-# DEPRECATED
-#############
+get '/vms/:id' do
+    check_permissions(:vm, :show_by_id)
 
-put '/vm/:id' do
+    client = authenticate(request.env, params)
+
+    halt 401, "Not authorized" if client.nil?
+
+    source_vm_id = request.env['HTTP_X_ONEGATE_VMID'].to_i
+    requested_vm_id = params[:id].to_i
+
+    vm = get_vm(source_vm_id, client)
+
+    service_id = vm['USER_TEMPLATE/SERVICE_ID']
+    service = get_service(service_id, client)
+
+    service_hash = JSON.parse(service)
+
+    response = build_service_hash(service_hash) rescue nil
+
+    if response.nil?
+        error_msg = "VMID:#{source_vm_id} Service #{service_id} is empty."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    # Check that the user has not spoofed the Service_ID
+    service_vm_ids = response["SERVICE"]["roles"].collect do |r|
+                        r["nodes"].collect{|n| n["deploy_id"]}
+                     end.flatten rescue []
+
+    if service_vm_ids.empty? || !service_vm_ids.include?(requested_vm_id)
+        error_msg = "VMID:#{requested_vm_id} Service #{service_id} does not contain VM."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    vm = get_vm(requested_vm_id, client)
+
+    response = build_vm_hash(vm.to_hash["VM"])
+
+    [200, response.to_json]
+end
+
+post '/vms/:id/action' do
+    check_permissions(:vm, :action_by_id)
+
+    client = authenticate(request.env, params)
+
+    halt 401, "Not authorized" if client.nil?
+
+    source_vm_id = request.env['HTTP_X_ONEGATE_VMID'].to_i
+    requested_vm_id = params[:id].to_i
+
+    vm = get_vm(source_vm_id, client)
+
+    service_id = vm['USER_TEMPLATE/SERVICE_ID']
+    service = get_service(service_id, client)
+
+    service_hash = JSON.parse(service)
+
+    response = build_service_hash(service_hash) rescue nil
+
+    if response.nil?
+        error_msg = "VMID:#{source_vm_id} Service #{service_id} is empty."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    # Check that the user has not spoofed the Service_ID
+    service_vm_ids = response["SERVICE"]["roles"].collect do |r|
+                        r["nodes"].collect{|n| n["deploy_id"]}
+                     end.flatten rescue []
+
+    if service_vm_ids.empty? || !service_vm_ids.include?(requested_vm_id)
+        error_msg = "VMID:#{requested_vm_id} Service #{service_id} does not contain VM."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    vm = get_vm(requested_vm_id, client)
+
+    action_hash = parse_json(request.body.read, 'action')
+    if OpenNebula.is_error?(action_hash)
+        halt 400, rc.message
+    end
+
+    rc = case action_hash['perform']
+         when "deploy"       then vm.deploy(action_hash['params'])
+         when "delete"       then vm.finalize
+         when "hold"         then vm.hold
+         when "livemigrate"  then vm.migrate(action_hash['params'], true)
+         when "migrate"      then vm.migrate(action_hash['params'], false)
+         when "resume"       then vm.resume
+         when "release"      then vm.release
+         when "stop"         then vm.stop
+         when "suspend"      then vm.suspend
+         when "saveas"       then vm.save_as(action_hash['params'])
+         when "snapshot_create"       then vm.snapshot_create(action_hash['params'])
+         when "snapshot_revert"       then vm.snapshot_revert(action_hash['params'])
+         when "snapshot_delete"       then vm.snapshot_delete(action_hash['params'])
+         when "shutdown"     then vm.shutdown(action_hash['params'])
+         when "reboot"       then vm.reboot(action_hash['params'])
+         when "poweroff"     then vm.poweroff(action_hash['params'])
+         when "resubmit"     then vm.resubmit
+         when "chown"        then vm.chown(action_hash['params'])
+         when "chmod"        then vm.chmod_octet(action_hash['params'])
+         when "resize"       then vm.resize(action_hash['params'])
+         when "attachdisk"   then vm.disk_attach(action_hash['params'])
+         when "detachdisk"   then vm.disk_detach(action_hash['params'])
+         when "attachnic"    then vm.nic_attach(action_hash['params'])
+         when "detachnic"    then vm.nic_detach(action_hash['params'])
+         when "update"       then vm.update(action_hash['params'])
+         when "rename"       then vm.rename(action_hash['params'])
+         when "undeploy"     then vm.undeploy(action_hash['params'])
+         when "resched"      then vm.resched
+         when "unresched"    then vm.unresched
+         when "recover"      then vm.recover(action_hash['params'])
+         else
+             error_msg = "#{action_hash['perform']} action not " <<
+                 " available for this resource"
+             OpenNebula::Error.new(error_msg)
+         end
+
+     if OpenNebula.is_error?(rc)
+         halt 500, rc.message
+     else
+         [204, vm.to_json]
+     end
+end
+
+put '/service/role/:role' do
+    check_permissions(:service, :change_cardinality)
+
+    client = authenticate(request.env, params)
+
+    halt 401, "Not authorized" if client.nil?
+
+    vm_id = request.env['HTTP_X_ONEGATE_VMID'].to_i
+
+    vm = get_vm(vm_id, client)
+
+    service_id = vm['USER_TEMPLATE/SERVICE_ID']
+    service = get_service(service_id, client)
+
+    service_hash = JSON.parse(service)
+
+    response = build_service_hash(service_hash) rescue nil
+
+    if response.nil?
+        error_msg = "VMID:#{vm_id} Service #{service_id} is empty."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    # Check that the user has not spoofed the Service_ID
+    service_vm_ids = response["SERVICE"]["roles"].collect do |r|
+                        r["nodes"].collect{|n| n["deploy_id"]}
+                     end.flatten rescue []
+
+    if service_vm_ids.empty? || !service_vm_ids.include?(vm_id)
+        error_msg = "VMID:#{vm_id} Service #{service_id} does not contain VM."
+        logger.error {error_msg}
+        halt 400, error_msg
+    end
+
+    action_response = flow_client(client).put(
+        "/service/" + service_id + "/role/" + params[:role],
+        request.body.read)
+
+    if CloudClient::is_error?(action_response)
+        error_msg = "Error performing action on service #{service_id} role #{params[:role]}"
+        logger.error {error_msg}
+        logger.error {action_response.message}
+        halt 400, error_msg
+    end
+
+    [200, ""]
+end
+
+put '/vms/:id' do
+    check_permissions(:vm, :update_by_id)
+
     client = authenticate(request.env, params)
 
     halt 401, "Not authorized" if client.nil?

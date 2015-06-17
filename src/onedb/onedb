@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -15,6 +15,16 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
+
+nk_encoding = nil
+
+if RUBY_VERSION =~ /^1.9/
+    Encoding.default_external = Encoding::UTF_8
+    Encoding.default_internal = Encoding::UTF_8
+    nk_encoding = "UTF-8"
+end
+
+NOKOGIRI_ENCODING = nk_encoding
 
 ONE_LOCATION = ENV["ONE_LOCATION"]
 

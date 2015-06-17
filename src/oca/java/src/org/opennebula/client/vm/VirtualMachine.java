@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,43 +109,87 @@ public class VirtualMachine extends PoolElement{
         "SHUTDOWN_UNDEPLOY",
         "EPILOG_UNDEPLOY",
         "PROLOG_UNDEPLOY",
-        "BOOT_UNDEPLOY" };
+        "BOOT_UNDEPLOY",
+        "HOTPLUG_PROLOG_POWEROFF",
+        "HOTPLUG_EPILOG_POWEROFF",
+        "BOOT_MIGRATE",
+        "BOOT_FAILURE",
+        "BOOT_MIGRATE_FAILURE",
+        "PROLOG_MIGRATE_FAILURE",
+        "PROLOG_FAILURE",
+        "EPILOG_FAILURE",
+        "EPILOG_STOP_FAILURE",
+        "EPILOG_UNDEPLOY_FAILURE",
+        "PROLOG_MIGRATE_POWEROFF",
+        "PROLOG_MIGRATE_POWEROFF_FAILURE",
+        "PROLOG_MIGRATE_SUSPEND",
+        "PROLOG_MIGRATE_SUSPEND_FAILURE",
+        "BOOT_UNDEPLOY_FAILURE",
+        "BOOT_STOPPED_FAILURE",
+        "PROLOG_RESUME_FAILURE",
+        "PROLOG_UNDEPLOY_FAILURE",
+        "DISK_SNAPSHOT_POWEROFF",
+        "DISK_SNAPSHOT_REVERT_POWEROFF",
+        "DISK_SNAPSHOT_DELETE_POWEROFF"
+    };
 
     private static final String[] SHORT_LCM_STATES =
     {
-        null,
-        "prol",
-        "boot",
-        "runn",
-        "migr",
-        "save",
-        "save",
-        "save",
-        "migr",
-        "prol",
-        "epil",
-        "epil",
-        "shut",
-        "shut",
-        "fail",
-        "clea",
-        "unkn",
-        "hotp",
-        "shut",
-        "boot",
-        "boot",
-        "boot",
-        "boot",
-        "clea",
-        "snap",
-        "hotp",
-        "hotp",
-        "hotp",
-        "hotp",
-        "shut",
-        "epil",
-        "prol",
-        "boot" };
+        "",         // LCM_INIT
+        "prol",     // PROLOG
+        "boot",     // BOOT
+        "runn",     // RUNNING
+        "migr",     // MIGRATE
+        "save",     // SAVE_STOP
+        "save",     // SAVE_SUSPEND
+        "save",     // SAVE_MIGRATE
+        "migr",     // PROLOG_MIGRATE
+        "prol",     // PROLOG_RESUME
+        "epil",     // EPILOG_STOP
+        "epil",     // EPILOG
+        "shut",     // SHUTDOWN
+        "shut",     // CANCEL
+        "fail",     // FAILURE
+        "clea",     // CLEANUP_RESUBMIT
+        "unkn",     // UNKNOWN
+        "hotp",     // HOTPLUG
+        "shut",     // SHUTDOWN_POWEROFF
+        "boot",     // BOOT_UNKNOWN
+        "boot",     // BOOT_POWEROFF
+        "boot",     // BOOT_SUSPENDED
+        "boot",     // BOOT_STOPPED
+        "clea",     // CLEANUP_DELETE
+        "snap",     // HOTPLUG_SNAPSHOT
+        "hotp",     // HOTPLUG_NIC
+        "hotp",     // HOTPLUG_SAVEAS
+        "hotp",     // HOTPLUG_SAVEAS_POWEROFF
+        "hotp",     // HOTPLUG_SAVEAS_SUSPENDED
+        "shut",     // SHUTDOWN_UNDEPLOY
+        "epil",     // EPILOG_UNDEPLOY
+        "prol",     // PROLOG_UNDEPLOY
+        "boot",     // BOOT_UNDEPLOY
+        "hotp",     // HOTPLUG_PROLOG_POWEROFF
+        "hotp",     // HOTPLUG_EPILOG_POWEROFF
+        "boot",     // BOOT_MIGRATE
+        "fail",     // BOOT_FAILURE
+        "fail",     // BOOT_MIGRATE_FAILURE
+        "fail",     // PROLOG_MIGRATE_FAILURE
+        "fail",     // PROLOG_FAILURE
+        "fail",     // EPILOG_FAILURE
+        "fail",     // EPILOG_STOP_FAILURE
+        "fail",     // EPILOG_UNDEPLOY_FAILURE
+        "migr",     // PROLOG_MIGRATE_POWEROFF
+        "fail",     // PROLOG_MIGRATE_POWEROFF_FAILURE
+        "migr",     // PROLOG_MIGRATE_SUSPEND
+        "fail",     // PROLOG_MIGRATE_SUSPEND_FAILURE
+        "fail",     // BOOT_UNDEPLOY_FAILURE
+        "fail",     // BOOT_STOPPED_FAILURE
+        "fail",     // PROLOG_RESUME_FAILURE
+        "fail",     // PROLOG_UNDEPLOY_FAILURE
+        "snap",     // DISK_SNAPSHOT_POWEROFF
+        "snap",     // DISK_SNAPSHOT_REVERT_POWEROFF
+        "snap"      // DISK_SNAPSHOT_DELETE_POWEROFF
+    };
 
     /**
      * Creates a new VM representation.
@@ -365,16 +409,12 @@ public class VirtualMachine extends PoolElement{
      * the default type
      * @param hot True to save the disk immediately, false will perform
      * the operation when the VM shuts down
-     * @param doTemplate True to clone also the VM originating template
-     * and replace the disk with the saved image
      * @return If an error occurs the error message contains the reason.
      */
     public static OneResponse diskSnapshot(Client client, int id,
-        int diskId, String imageName, String imageType,
-        boolean hot, boolean doTemplate)
+        int diskId, String imageName, String imageType, boolean hot)
     {
-        return client.call(SAVEDISK, id ,diskId, imageName, imageType,
-                            hot, doTemplate);
+        return client.call(SAVEDISK, id ,diskId, imageName, imageType, hot);
     }
 
     /**
@@ -462,12 +502,13 @@ public class VirtualMachine extends PoolElement{
      *
      * @param client XML-RPC Client.
      * @param id The virtual machine id (vid) of the target instance.
-     * @param success recover by succeeding the missing transaction if true.
+     * @param operation to recover the VM: (0) failure, (1) success or (2)
+     * retry
      * @return If an error occurs the error message contains the reason.
      */
-    public static OneResponse recover(Client client, int id, boolean success)
+    public static OneResponse recover(Client client, int id, int operation)
     {
-        return client.call(RECOVER, id, success);
+        return client.call(RECOVER, id, operation);
     }
 
     // =================================
@@ -529,7 +570,6 @@ public class VirtualMachine extends PoolElement{
      * <li>{@link VirtualMachine#suspend()}</li>
      * <li>{@link VirtualMachine#resume()}</li>
      * <li>{@link VirtualMachine#delete(boolean)}</li>
-     * <li>{@link VirtualMachine#boot()}</li>
      * <li>{@link VirtualMachine#poweroff()}</li>
      * <li>{@link VirtualMachine#resched()}</li>
      * <li>{@link VirtualMachine#unresched()}</li>
@@ -538,7 +578,7 @@ public class VirtualMachine extends PoolElement{
      *
      * @param action The action name to be performed, can be:<br/>
      * "shutdown", "hold", "release", "stop", "shutdown-hard", "suspend",
-     * "resume", "boot", "delete", "delete-recreate", "reboot", "resched",
+     * "resume", "delete", "delete-recreate", "reboot", "resched",
      * "unresched", "reboot-hard", "poweroff", "undeploy", "undeploy-hard"
      * @return If an error occurs the error message contains the reason.
      */
@@ -557,11 +597,13 @@ public class VirtualMachine extends PoolElement{
      * @param enforce If it is set to true, the host capacity
      * will be checked, and the deployment will fail if the host is
      * overcommited. Defaults to false
+     * @param ds_id The System Datastore where to migrate the VM. To use the
+     * current one, set it to -1
      * @return If an error occurs the error message contains the reason.
      */
-    public OneResponse migrate(int hostId, boolean live, boolean enforce)
+    public OneResponse migrate(int hostId, boolean live, boolean enforce, int ds_id)
     {
-        return client.call(MIGRATE, id, hostId, live, enforce);
+        return client.call(MIGRATE, id, hostId, live, enforce, ds_id);
     }
 
     /**
@@ -574,7 +616,7 @@ public class VirtualMachine extends PoolElement{
      */
     public OneResponse migrate(int hostId, boolean live)
     {
-        return migrate(hostId, live, false);
+        return migrate(hostId, live, false, -1);
     }
 
     /**
@@ -586,7 +628,7 @@ public class VirtualMachine extends PoolElement{
      */
     public OneResponse migrate(int hostId)
     {
-        return migrate(hostId, false, false);
+        return migrate(hostId, false, false, -1);
     }
 
     /**
@@ -711,15 +753,12 @@ public class VirtualMachine extends PoolElement{
      * the default type
      * @param hot True to save the disk immediately, false will perform
      * the operation when the VM shuts down
-     * @param doTemplate True to clone also the VM originating template
-     * and replace the disk with the saved image
      * @return If an error occurs the error message contains the reason.
      */
     public OneResponse diskSnapshot(int diskId, String imageName,
-        String imageType, boolean hot, boolean doTemplate)
+        String imageType, boolean hot)
     {
-        return diskSnapshot(client, id, diskId, imageName, imageType,
-                            hot, doTemplate);
+        return diskSnapshot(client, id, diskId, imageName, imageType, hot);
     }
 
     /**
@@ -732,7 +771,7 @@ public class VirtualMachine extends PoolElement{
      */
     public OneResponse diskSnapshot(int diskId, String imageName)
     {
-        return diskSnapshot(diskId, imageName, "", false, false);
+        return diskSnapshot(diskId, imageName, "", false);
     }
 
     /**
@@ -746,7 +785,7 @@ public class VirtualMachine extends PoolElement{
      */
     public OneResponse diskSnapshot(int diskId, String imageName, boolean hot)
     {
-        return diskSnapshot(diskId, imageName, "", hot, false);
+        return diskSnapshot(diskId, imageName, "", hot);
     }
 
     /**
@@ -860,7 +899,7 @@ public class VirtualMachine extends PoolElement{
      * @param success recover by succeeding the missing transaction if true.
      * @return If an error occurs the error message contains the reason.
      */
-    public OneResponse recover(boolean success)
+    public OneResponse recover(int success)
     {
         return recover(client, id, success);
     }
@@ -1018,15 +1057,6 @@ public class VirtualMachine extends PoolElement{
     }
 
     /**
-     * Forces a re-deployment of a VM in UNKNOWN or BOOT states.
-     * @return If an error occurs the error message contains the reason.
-     */
-    public OneResponse boot()
-    {
-        return action("boot");
-    }
-
-    /**
      * Sets the re-scheduling flag for the VM
      * @return If an error occurs the error message contains the reason.
      */
@@ -1143,11 +1173,11 @@ public class VirtualMachine extends PoolElement{
     }
 
     /**
-     * @deprecated  Replaced by {@link #diskSnapshot(int,String,String,boolean,boolean)}
+     * @deprecated  Replaced by {@link #diskSnapshot(int,String,String,boolean)}
      */
     public OneResponse savedisk(int diskId, String imageName, String imageType)
     {
-        return diskSnapshot(diskId, imageName, imageType, false, false);
+        return diskSnapshot(diskId, imageName, imageType, false);
     }
 
     /**
@@ -1205,17 +1235,6 @@ public class VirtualMachine extends PoolElement{
     @Deprecated public OneResponse resubmit()
     {
         return action("resubmit");
-    }
-
-    /**
-     * Forces a re-deployment of a VM in UNKNOWN or BOOT states.
-     * @return If an error occurs the error message contains the reason.
-     *
-     * @deprecated  Replaced by {@link #boot}
-     */
-    @Deprecated public OneResponse restart()
-    {
-        return action("restart");
     }
 
     /**

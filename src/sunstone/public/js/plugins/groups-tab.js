@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -55,7 +55,6 @@ function create_group_tmpl(dialog_name){
       <div class="columns large-7">\
           <dl class="tabs right-info-tabs text-center right" data-tab>\
                <dd class="active"><a href="#resource_views"><i class="fa fa-eye"></i><br>'+tr("Views")+'</a></dd>\
-               <dd><a href="#resource_providers"><i class="fa fa-cloud"></i><br>'+tr("Resources")+'</a></dd>\
                <dd><a href="#administrators"><i class="fa fa-upload"></i><br>'+tr("Admin")+'</a></dd>\
                <dd><a href="#resource_creation"><i class="fa fa-folder-open"></i><br>'+tr("Permissions")+'</a></dd>\
           </dl>\
@@ -67,7 +66,7 @@ function create_group_tmpl(dialog_name){
         <div class="large-12 columns">\
           <p class="subheader">'
             +tr("Allow users in this group to use the following Sunstone views")+
-            '&emsp;<span class="tip">'+tr("Views available to the group users")+'</span>\
+            '&emsp;<span class="tip">'+tr("Views available to the group users. If the default is unset, the one set in sunstone-views.yaml will be used")+'</span>\
           </p>\
         </div>\
       </div>\
@@ -76,32 +75,6 @@ function create_group_tmpl(dialog_name){
             insert_views(dialog_name)
         +'</div>\
       </div>\
-      <div class="row">\
-        <div class="large-12 columns">\
-          <p class="subheader">'
-            +tr("Set the default Sunstone view")+
-            '&emsp;<span class="tip">'+tr("Default view for the group users. If it is unset, the default is set in sunstone-views.yaml")+'</span>\
-          </p>\
-        </div>\
-      </div>\
-      <div class="row">\
-        <div class="large-12 columns">'+
-            insert_views_default(dialog_name)
-        +'</div>\
-      </div>\
-    </div>\
-    <div id="resource_providers" class="content">\
-        <div class="row">\
-          <div class="large-12 columns">\
-            <h5>' + tr("Zones") +'</h5>\
-          </div>\
-        </div>\
-        <div class="row">\
-          <div class="large-12 columns">\
-            <dl class="tabs" id="group_zones_tabs" data-tab></dl>\
-            <div class="tabs-content group_zones_tabs_content"></div>\
-          </div>\
-        </div>\
     </div>\
     <div id="administrators" class=" content">\
       <div class="row">\
@@ -111,7 +84,7 @@ function create_group_tmpl(dialog_name){
               <label>\
                 <input type="checkbox" id="admin_user" name="admin_user" value="YES" />\
                 '+tr("Create an administrator user")+'\
-                <span class="tip">'+tr("You can create now an administrator user that will be assigned to the new regular group, with the administrator group as a secondary one.")+'</span>\
+                <span class="tip">'+tr("You can create now an administrator user. More administrators can be added later.")+'</span>\
               </label>\
             </div>\
           </div>' +
@@ -133,7 +106,7 @@ function create_group_tmpl(dialog_name){
         <div class="large-12 columns">\
           <p class="subheader">'
             +tr("Allow users in this group to create the following resources")+
-            '&emsp;<span class="tip">'+tr("This will create new ACL Rules to define which virtual resources this group's users will be able to create. You can set different resources for the administrator group, and decide if the administrators will be allowed to create new users.")+'</span>\
+            '&emsp;<span class="tip">'+tr("This will create new ACL Rules to define which virtual resources this group's users will be able to create.")+'</span>\
           </p>\
         </div>\
       </div>\
@@ -141,7 +114,6 @@ function create_group_tmpl(dialog_name){
         <div class="large-12 columns">\
           <table class="dataTable" style="table-layout:fixed">\
             <thead><tr>\
-              <th/>\
               <th>'+tr("VMs")+'</th>\
               <th>'+tr("VNets")+'</th>\
               <th>'+tr("Security Groups")+'</th>\
@@ -151,7 +123,6 @@ function create_group_tmpl(dialog_name){
             </tr></thead>\
             <tbody>\
               <tr>\
-                <th>'+tr("Users")+'</th>\
                 <td><input type="checkbox" id="group_res_vm" name="group_res_vm" class="resource_cb" value="VM"></input></td>\
                 <td><input type="checkbox" id="group_res_net" name="group_res_net" class="resource_cb" value="NET"></input></td>\
                 <td><input type="checkbox" id="group_res_sg" name="group_res_sg" class="resource_cb" value="SECGROUP"></input></td>\
@@ -160,15 +131,6 @@ function create_group_tmpl(dialog_name){
                 <td><input type="checkbox" id="group_res_document" name="group_res_document" class="resource_cb" value="DOCUMENT"></input></td>\
                 <td/>\
               </tr>\
-              <tr>\
-                <th>'+tr("Admins")+'</th>\
-                <td><input type="checkbox" id="group_admin_res_vm" name="group_admin_res_vm" class="resource_cb" value="VM"></input></td>\
-                <td><input type="checkbox" id="group_admin_res_net" name="group_admin_res_net" class="resource_cb" value="NET"></input></td>\
-                <td><input type="checkbox" id="group_admin_res_sg" name="group_admin_res_sg" class="resource_cb" value="SECGROUP"></input></td>\
-                <td><input type="checkbox" id="group_admin_res_image" name="group_admin_res_image" class="resource_cb" value="IMAGE"></input></td>\
-                <td><input type="checkbox" id="group_admin_res_template" name="group_admin_res_template" class="resource_cb" value="TEMPLATE"></input></td>\
-                <td><input type="checkbox" id="group_admin_res_document" name="group_admin_res_document" class="resource_cb" value="DOCUMENT"></input></td>\
-              </tr>\
             </tbody>\
           </table>\
         </div>\
@@ -176,6 +138,11 @@ function create_group_tmpl(dialog_name){
     </div>\
   </div>\
   <div class="reveal-footer">\
+    <div class="row collapse" id="default_vdc_warning">\
+      <div class="large-12 columns text-right">\
+        <span class="radius secondary label"><i class="fa fa-warning"/> '+tr("New Groups are automatically added to the default VDC")+'</span>\
+      </div>\
+    </div>\
     <div class="form_buttons">\
       <button class="button radius right success" id="create_group_submit" value="Group.create">'+tr("Create")+'</button>\
        <button class="button right radius" type="submit" id="update_group_submit">' + tr("Update") + '</button>\
@@ -335,61 +302,22 @@ var group_actions = {
         error: onError
     },
 
-
-    "Group.add_provider_action" : {
+    "Group.add_admin" : {
         type: "single",
-        call: OpenNebula.Group.add_provider,
-        callback: function(request) {
-           Sunstone.runAction('Group.show',request.request.data[0][0]);
+        call : OpenNebula.Group.add_admin,
+        callback : function (req) {
+            Sunstone.runAction('Group.show',req.request.data[0][0]);
         },
-        error: onError
+        error : onError
     },
 
-    "Group.del_provider_action" : {
+    "Group.del_admin" : {
         type: "single",
-        call: OpenNebula.Group.del_provider,
-        callback: function(request) {
-          Sunstone.runAction('Group.show',request.request.data[0][0]);
+        call : OpenNebula.Group.del_admin,
+        callback : function (req) {
+            Sunstone.runAction('Group.show',req.request.data[0][0]);
         },
-        error: onError
-    },
-
-    "Group.add_provider" : {
-        type: "multiple",
-        call: function(params){
-            var cluster = params.data.extra_param;
-            var group   = params.data.id;
-
-            extra_param = {
-                "zone_id" : 0,
-                "cluster_id" : cluster
-            }
-
-            Sunstone.runAction("Group.add_provider_action", group, extra_param);
-        },
-        callback: function(request) {
-            Sunstone.runAction('Group.show',request.request.data[0]);
-        },
-        elements: groupElements
-    },
-
-    "Group.del_provider" : {
-        type: "multiple",
-        call: function(params){
-            var cluster = params.data.extra_param;
-            var group   = params.data.id;
-
-            extra_param = {
-                "zone_id" : 0,
-                "cluster_id" : cluster
-            }
-
-            Sunstone.runAction("Group.del_provider_action", group, extra_param);
-        },
-        callback: function(request) {
-            Sunstone.runAction('Group.show',request.request.data[0]);
-        },
-        elements: groupElements
+        error : onError
     }
 }
 
@@ -438,7 +366,7 @@ var groups_tab = {
     buttons: group_buttons,
     tabClass: 'subTab',
     parentTab: 'system-tab',
-    search_input: '<input id="group_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="group_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-users"></i>&emsp;'+tr("Groups"),
     info_header: '<i class="fa fa-fw fa-users"></i>&emsp;'+tr("Group"),
     subheader: '<span>\
@@ -466,34 +394,114 @@ Sunstone.addActions(group_actions);
 Sunstone.addMainTab('groups-tab',groups_tab);
 Sunstone.addInfoPanel("group_info_panel",group_info_panel);
 
+function generateViewTable(views, dialog_name) {
+  var table_str = '<table class="dataTable extended_table">'+
+    "<tr>"+
+      "<th style='width: 60%;'></th>"+
+      "<th>"+tr("Group Users")+"</th>"+
+      "<th>"+tr("Group Admins")+"</th>"+
+    "<tr>";
+
+  $.each(views, function(id, view){
+      var default_user_checked = view.id == 'cloud' ? "checked" : "";
+      var default_admin_checked = view.id == 'groupadmin' ? "checked" : "";
+
+      table_str += "<tr><td>" + 
+          view.name +
+          ' ' + tr("View") +
+          (view.description ? 
+            '<span class="tip">'+view.description+'</span>'
+            : "") +
+        "</td>"+
+        '<td>\
+          <input class="user_view_input" type="checkbox" \
+            id="group_view_'+dialog_name+'_'+view.id+'" \
+            value="'+view.id+'" '+default_user_checked+'/>\
+        </td>'+
+        '<td>\
+          <input class="admin_view_input" type="checkbox" \
+            id="group_admin_view_'+dialog_name+'_'+view.id+'" \
+            value="'+view.id+'" '+default_admin_checked+'/>\
+        </td></tr>';
+  });
+
+  table_str += '</table>';
+
+  return table_str;
+} 
+
 function insert_views(dialog_name){
-  var views_checks_str = "";
-  var views_array = config['all_views'];
-  for (var i = 0; i < views_array.length; i++)
-  {
-    var checked = views_array[i] == 'cloud' ? "checked" : "";
-
-    views_checks_str = views_checks_str +
-             '<input type="checkbox" id="group_view_'+dialog_name+'_'+views_array[i]+
-                '" value="'+views_array[i]+'" '+checked+'/>' +
-             '<label for="group_view_'+dialog_name+'_'+views_array[i]+'">'+views_array[i]+
-             '</label>'
+  var filtered_views = {
+    cloud : [],
+    advanced : [],
+    vcenter : [],
+    other : []
   }
-  return views_checks_str;
-}
 
-function insert_views_default(dialog_name){
-  var views_checks_str = "";
-  var views_array = config['all_views'];
-  for (var i = 0; i < views_array.length; i++)
-  {
-    views_checks_str = views_checks_str +
-             '<input type="radio" name="group_default_view_'+dialog_name+'" id="group_default_view_'+dialog_name+'_'+views_array[i]+
-                '" value="'+views_array[i]+'"/>' +
-             '<label for="group_default_view_'+dialog_name+'_'+views_array[i]+'">'+views_array[i]+
-             '</label>'
-  }
-  return views_checks_str;
+  var view_info;
+  $.each(config['all_views'], function(index, view_id) {
+    view_info = views_info[view_id];
+    if (view_info) {
+      switch (view_info.type) {
+        case 'advanced':
+          filtered_views.advanced.push(view_info);
+          break;
+        case 'cloud':
+          filtered_views.cloud.push(view_info);
+          break;
+        case 'vcenter':
+          filtered_views.vcenter.push(view_info);
+          break;
+        default:
+          filtered_views.other.push({
+            id: view_id,
+            name: view_id,
+            description: null,
+            type: "other"
+          });
+          break;
+      }
+    } else {
+      filtered_views.other.push({
+        id: view_id,
+        name: view_id,
+        description: null,
+        type: "other"
+      });
+    }
+  })
+
+  var str = "";
+
+  str += '<div class="row">'+
+      '<div class="large-6 columns user_view_default_container">'+
+      '</div>'+
+      '<div class="large-6 columns admin_view_default_container">'+
+      '</div>'+
+    '</div><br>';
+
+  $.each(filtered_views, function(view_type, views){    
+    if (views.length > 0) {
+      str += '<div class="row">'+
+          '<div class="large-7 columns">'+
+            '<h4>'+view_types[view_type].name+
+            (view_types[view_type].description ? 
+              '<span class="tip">' + view_types[view_type].description + '</span>'
+              : "")+
+            '</h4>'+
+            generateViewTable(views, dialog_name) +
+          '</div>'+
+          '<div class="large-5 columns" style="text-align: center">'+
+            (view_types[view_type].preview ?
+              '<img src="images/' + view_types[view_type].preview +'" style="height: 200px;">' :
+              '') +
+          '</div>'+
+        '</div><br>';
+    }
+  })
+
+
+  return str;
 }
 
 function groupElements(){
@@ -588,70 +596,66 @@ function updateGroupsView(request, group_list, quotas_hash){
     $(".total_groups").text(group_list.length);
 }
 
-function fromJSONtoProvidersTable(group_info){
-    providers_array=group_info.RESOURCE_PROVIDER
-    var str = ""
-    if (!providers_array){ return "";}
-    if (!$.isArray(providers_array))
-    {
-        var tmp_array   = new Array();
-        tmp_array[0]    = providers_array;
-        providers_array = tmp_array;
-    }
+function generateUserViewsTableFromInfo(admin_views, user_views, default_admin_view, default_user_view) {
+  var html = "";
 
-    $.each(providers_array, function(index, provider){
-       var cluster_id = (provider.CLUSTER_ID == "10") ? tr("All") : provider.CLUSTER_ID;
-       str +=
-        '<tr>\
-            <td>' + provider.ZONE_ID + '</td>\
-            <td>' + cluster_id + '</td>\
-            <td>\
-             <div id="div_minus_rp" class="text-right">\
-               <a id="div_minus_rp_a_'+provider.ZONE_ID+'" class="cluster_id_'+cluster_id+' group_id_'+group_info.ID+'" href="#"><i class="fa fa-trash-o"/></a>\
-             </div>\
-            </td>\
-        </tr>';
-    });
+  html += '<table class="dataTable extended_table">';
 
-    $("#div_minus_rp").die();
+  if (admin_views) {
+    html += '<thead>'+
+        '<tr><th colspan="3">'+tr("Group Admins Views")+'</th></tr>'+
+      '</thead>';
 
-        // Listener for key,value pair remove action
-    $("#div_minus_rp").live("click", function() {
-        // Remove div_minus from the id
-        zone_id = this.firstElementChild.id.substring(15,this.firstElementChild.id.length);
+    $.each(admin_views.split(','), function(index, view){
+      html += '<tr>' +
+          '<td class="key_td">'+
+            (views_info[view] ? views_info[view].name : view) +
+            (view == default_admin_view ? ' (' + tr("default") + ') ': '') +
+            (views_info[view] ? 
+              '<span class="tip">' + views_info[view].description + '</span>'
+              : "")
+          '</td>'+
+        '</tr>';
+    })
+  }
 
-        var list_of_classes = this.firstElementChild.className.split(" ");
+  if (user_views) {
+    html += '<thead>'+
+        '<tr><th colspan="3">'+tr("Group Users Views")+'</th></tr>'+
+      '</thead>';
 
-        $.each(list_of_classes, function(index, value) {
-            if (value.match(/^cluster_id_/))
-            {
-              cluster_id=value.substring(11,value.length);
-            }
-            else
-            {
-              if (value.match(/^group_id_/))
-              {
-                group_id=value.substring(9,value.length);
-              }
-            }
+    $.each(user_views.split(','), function(index, view){
+      html += '<tr>' +
+          '<td class="key_td">'+
+            (views_info[view] ? views_info[view].name : view) +
+            (view == default_user_view ? ' (' + tr("default") + ') ': '') +
+            (views_info[view] ? 
+              '<span class="tip">' + views_info[view].description + '</span>'
+              : "")
+          '</td>'+
+        '</tr>';
+    })
+  }
 
-        });
+  html += '</table>';
 
-        extra_param = {
-            "zone_id" : zone_id,
-            "cluster_id" :  (cluster_id == "All") ? 10 : cluster_id
-        }
-
-        Sunstone.runAction("Group.del_provider_action", group_id, extra_param);
-    });
-
-    return str;
+  return html;
 }
 
 function updateGroupInfo(request,group){
     var info = group.GROUP;
 
     $(".resource-info-header", $("#groups-tab")).html(info.NAME);
+
+
+    var admin_views = info.TEMPLATE.GROUP_ADMIN_VIEWS;
+    delete info.TEMPLATE.GROUP_ADMIN_VIEWS;
+    var user_views = info.TEMPLATE.SUNSTONE_VIEWS;
+    delete info.TEMPLATE.SUNSTONE_VIEWS;
+    var default_admin_view = info.TEMPLATE.GROUP_ADMIN_DEFAULT_VIEW;
+    delete info.TEMPLATE.GROUP_ADMIN_DEFAULT_VIEW;
+    var default_user_view = info.TEMPLATE.DEFAULT_VIEW;
+    delete info.TEMPLATE.DEFAULT_VIEW;
 
     var info_tab = {
           title: tr("Info"),
@@ -676,6 +680,7 @@ function updateGroupInfo(request,group){
               </table>\
            </div>\
            <div class="large-6 columns">' +
+            generateUserViewsTableFromInfo(admin_views, user_views, default_admin_view, default_user_view)+
            '</div>\
          </div>\
          <div class="row">\
@@ -683,10 +688,20 @@ function updateGroupInfo(request,group){
               insert_extended_template_table(info.TEMPLATE,
                                                  "Group",
                                                  info.ID,
-                                                 "Attributes") +
+                                                 tr("Attributes"),
+                                                 {GROUP_ADMIN_VIEWS: admin_views,
+                                                  SUNSTONE_VIEWS: user_views,
+                                                  GROUP_ADMIN_DEFAULT_VIEW: default_admin_view,
+                                                  DEFAULT_VIEW: default_user_view}) +
           '</div>\
         </div>'
       }
+
+    var users_tab = {
+        title : tr("Users"),
+        icon: "fa-users",
+        content: group_users_tab_content(info)
+    };
 
     var default_group_quotas = Quotas.default_quotas(info.DEFAULT_GROUP_QUOTAS);
 
@@ -700,33 +715,6 @@ function updateGroupInfo(request,group){
         content : quotas_html
     };
 
-
-    var providers_tab = {
-        title : tr("Providers"),
-        icon: "fa-th",
-        content :
-        '<div class="">\
-            <div class="large-6 columns">\
-                <table id="info_user_table" class="dataTable extended_table">\
-                    <thead>\
-                        <tr>\
-                            <th>' + tr("Zone ID") + '</th>\
-                            <th>' + tr("Cluster ID") + '</th>\
-                            <th class="text-right">\
-                              <button id="add_rp_button" class="button tiny success radius" >\
-                                <i class="fa fa-plus-circle"></i>\
-                              </button>\
-                            </th>\
-                        </tr>\
-                    </thead>\
-                    <tbody>' +
-                        fromJSONtoProvidersTable(info) +
-                    '</tbody>\
-                </table>\
-            </div>\
-        </div>'
-    };
-
     var accounting_tab = {
         title: tr("Accounting"),
         icon: "fa-bar-chart-o",
@@ -735,8 +723,8 @@ function updateGroupInfo(request,group){
 
 
     Sunstone.updateInfoPanelTab("group_info_panel","group_info_tab",info_tab);
+    Sunstone.updateInfoPanelTab("group_info_panel","group_users_tab",users_tab);
     Sunstone.updateInfoPanelTab("group_info_panel","group_quotas_tab",quotas_tab);
-    Sunstone.updateInfoPanelTab("group_info_panel","group_providers_tab",providers_tab);
     Sunstone.updateInfoPanelTab("group_info_panel","group_accounting_tab",accounting_tab);
 
     if (Config.isFeatureEnabled("showback")) {
@@ -747,18 +735,20 @@ function updateGroupInfo(request,group){
       };
 
       Sunstone.updateInfoPanelTab("group_info_panel","group_showback_tab",showback_tab);
-      
-      showbackGraphs(
-          $("#group_showback","#group_info_panel"),
-          {   fixed_group: info.ID });
     }
 
     Sunstone.popUpInfoPanel("group_info_panel", 'groups-tab');
 
+    setup_group_users_tab_content(info);
+
+    if (Config.isFeatureEnabled("showback")) {
+      showbackGraphs(
+          $("#group_showback","#group_info_panel"),
+          {   fixed_user: "", fixed_group: info.ID });
+    }
+
     $("#add_rp_button", $("#group_info_panel")).click(function(){
         initUpdateGroupDialog();
-
-        $("a[href=#resource_providers]", $update_group_dialog).click();
 
         return false;
     });
@@ -774,243 +764,125 @@ function updateGroupInfo(request,group){
         "Group");
 }
 
-function setup_group_resource_tab_content(zone_id, zone_section, str_zone_tab_id, str_datatable_id, selected_group_clusters, group) {
-    // Show the clusters dataTable when the radio button is selected
-    $("input[name='"+str_zone_tab_id+"']", zone_section).change(function(){
-        if ($("input[name='"+str_zone_tab_id+"']:checked", zone_section).val() == "cluster") {
-            $("div.group_cluster_select", zone_section).show();
-        }
-        else {
-            $("div.group_cluster_select", zone_section).hide();
-        }
-    });
+function group_users_tab_content(group_info){
 
-    if (zone_id == 0 && !group)
-    {
-      $('#'+str_zone_tab_id+'resources_all', zone_section).click();
+    var html = "";
+
+    if (Config.isTabActionEnabled("groups-tab", "Group.edit_admins")) {
+        html +=
+        '<div class="row">\
+          <div class="large-4 columns right">\
+            <span>\
+              <button class="button secondary small radius" id="edit_admins_button" style="width: 100%;">\
+                <span class="fa fa-pencil-square-o"></span> '+tr("Edit administrators")+'\
+              </button>\
+              <button class="button alert small radius" id="cancel_admins_button" style="display: none">\
+                '+tr("Cancel")+'\
+              </button>\
+              <button class="button success small radius" id="submit_admins_button" style="display: none">\
+                '+tr("Apply")+'\
+              </button>\
+            </span>\
+          </div>\
+        </div>';
     }
-    else
-    {
-      $('#'+str_zone_tab_id+'resources_none', zone_section).click();
-    }
 
-    var dataTable_group_clusters = $('#'+str_datatable_id, zone_section).dataTable({
-        "iDisplayLength": 4,
-        "sDom" : '<"H">t<"F"p>',
-        "bAutoWidth":false,
-        "bSortClasses" : false,
-        "bDeferRender": true,
-        "aoColumnDefs": [
-            { "sWidth": "35px", "aTargets": [0,1] },
-            { "bVisible": false, "aTargets": []}
-        ]
-    });
-
-    // Retrieve the clusters to fill the datatable
-    update_datatable_group_clusters(dataTable_group_clusters, zone_id, str_zone_tab_id, group);
-
-    $('#'+str_zone_tab_id+'_search', zone_section).keyup(function(){
-        dataTable_group_clusters.fnFilter( $(this).val() );
-    })
-
-    dataTable_group_clusters.fnSort( [ [1,config['user_config']['table_order']] ] );
-
-    $('#'+str_datatable_id + '  tbody', zone_section).delegate("tr", "click", function(e){
-        var aData   = dataTable_group_clusters.fnGetData(this);
-
-        if (!aData){
-            return true;
-        }
-
-        var cluster_id = aData[1];
-
-        if ($.isEmptyObject(selected_group_clusters[zone_id])) {
-            $('#you_selected_group_clusters'+str_zone_tab_id,  zone_section).show();
-            $("#select_group_clusters"+str_zone_tab_id, zone_section).hide();
-        }
-
-        if(!$("td:first", this).hasClass('markrowchecked'))
-        {
-            $('input.check_item', this).attr('checked','checked');
-            selected_group_clusters[zone_id][cluster_id] = this;
-            $(this).children().each(function(){$(this).addClass('markrowchecked');});
-            if ($('#tag_cluster_'+aData[1], $('.selected_group_clusters', zone_section)).length == 0 ) {
-                $('.selected_group_clusters', zone_section).append('<span id="tag_cluster_'+aData[1]+'" class="radius label">'+aData[2]+' <span class="fa fa-times blue"></span></span> ');
-            }
-        }
-        else
-        {
-            $('input.check_item', this).removeAttr('checked');
-            delete selected_group_clusters[zone_id][cluster_id];
-            $(this).children().each(function(){$(this).removeClass('markrowchecked');});
-            $('.selected_group_clusters span#tag_cluster_'+cluster_id, zone_section).remove();
-        }
-
-        if ($.isEmptyObject(selected_group_clusters[zone_id])) {
-            $('#you_selected_group_clusters'+str_zone_tab_id,  zone_section).hide();
-            $('#select_group_clusters'+str_zone_tab_id, zone_section).show();
-        }
-
-        $('.alert-box', $('.group_cluster_select')).hide();
-
-        return true;
-    });
-
-    $( '#' +str_zone_tab_id+'Tab .fa-times' ).live( "click", function() {
-        $(this).parent().remove();
-        var id = $(this).parent().attr("ID");
-
-        var cluster_id=id.substring(12,id.length);
-
-        $('td', selected_group_clusters[zone_id][cluster_id]).removeClass('markrowchecked');
-        $('input.check_item', selected_group_clusters[zone_id][cluster_id]).removeAttr('checked');
-        delete selected_group_clusters[zone_id][cluster_id];
-
-        if ($.isEmptyObject(selected_group_clusters[zone_id])) {
-            $('#you_selected_group_clusters'+str_zone_tab_id, zone_section).hide();
-            $('#select_group_clusters'+str_zone_tab_id, zone_section).show();
-        }
-    });
-
-    setupTips(zone_section);
-}
-
-function generate_group_resource_tab_content(str_zone_tab_id, str_datatable_id, zone_id, group){
-    var html =
-    '<div class="row">\
-      <div class="large-12 columns">\
-          <p class="subheader">' +  tr("Assign physical resources") + '\
-            &emsp;<span class="tip">'+tr("For each OpenNebula Zone, you can assign cluster resources (set of physical hosts, datastores and virtual networks) to this group.")+'</span>\
-          </p>\
-      </div>\
-    </div>\
-    <div class="row">\
-      <div class="large-12 columns">\
-          <input type="radio" name="'+str_zone_tab_id+'" id="'+str_zone_tab_id+'resources_all" value="all"><label for="'+str_zone_tab_id+'resources_all">'+tr("All")+'</label>\
-          <input type="radio" name="'+str_zone_tab_id+'" id="'+str_zone_tab_id+'resources_cluster" value="cluster"><label for="'+str_zone_tab_id+'resources_cluster">'+tr("Select clusters")+'</label>\
-          <input type="radio" name="'+str_zone_tab_id+'" id="'+str_zone_tab_id+'resources_none" value="none"><label for="'+str_zone_tab_id+'resources_none">'+tr("None")+'</label>\
-      </div>\
-    </div>\
-    <div class="row">\
-      <div class="large-12 columns">\
-        <div id="req_type" class="group_cluster_select hidden">\
-            <div class="row collapse ">\
-              <div class="large-9 columns">\
-               <button id="refresh_group_clusters_table_button_class'+str_zone_tab_id+'" type="button" class="refresh button small radius secondary"><i class="fa fa-refresh" /></button>\
-              </div>\
-              <div class="large-3 columns">\
-                <input id="'+str_zone_tab_id+'_search" class="search" type="text" placeholder="'+tr("Search")+'"/>\
-              </div>\
-            </div>\
-            <table id="'+str_datatable_id+'" class="datatable twelve">\
-              <thead>\
-              <tr>\
-                <th></th>\
-                <th>' + tr("ID") + '</th>\
-                <th>' + tr("Name") + '</th>\
-                <th>' + tr("Hosts") + '</th>\
-                <th>' + tr("VNets") + '</th>\
-                <th>' + tr("Datastores") + '</th>\
-              </tr>\
-              </thead>\
-              <tbody id="tbodyclusters">\
-              </tbody>\
-            </table>\
-            <br>\
-            <div class="selected_group_clusters">\
-              <span id="select_group_clusters'+str_zone_tab_id+'" class="radius secondary label">'+tr("Please select one or more clusters from the list")+'</span> \
-              <span id="you_selected_group_clusters'+str_zone_tab_id+'" class="radius secondary label hidden">'+tr("You selected the following clusters:")+'</span> \
-            </div>\
-            <br>\
-        </div\
-      </div>\
-    </div>';
-
-    $("#refresh_group_clusters_table_button_class"+str_zone_tab_id).die();
-    $("#refresh_group_clusters_table_button_class"+str_zone_tab_id).live('click', function(){
-        update_datatable_group_clusters(
-            $('table[id='+str_datatable_id+']').dataTable(),
-            zone_id, str_zone_tab_id, group);
-    });
+    html += '<div class="group_users_info_table">\
+        '+generateUserTableSelect("group_users_list")+'\
+      </div>';
 
     return html;
 }
 
-// TODO: Refactor? same function in templates-tab.js
-function update_datatable_group_clusters(datatable, zone_id, str_zone_tab_id, group) {
+function setup_group_users_tab_content(group_info){
 
-    OpenNebula.Cluster.list_in_zone({
-        data:{zone_id:zone_id},
-        timeout: true,
-        success: function (request, obj_list){
-            var obj_list_array = [];
+    var users = [];
 
-            $.each(obj_list,function(){
-                //Grab table data from the obj_list
-                obj_list_array.push(clusterElementArray(this));
+    if (group_info.USERS.ID != undefined){
+        users = group_info.USERS.ID;
+
+        if (!$.isArray(users)){
+            users = [users];
+        }
+    }
+
+    var admins = [];
+
+    if (group_info.ADMINS.ID != undefined){
+        admins = group_info.ADMINS.ID;
+
+        if (!$.isArray(admins)){
+            admins = [admins];
+        }
+    }
+
+    var opts = {
+        read_only: true,
+        fixed_ids: users,
+        admin_ids: admins
+    }
+
+    setupUserTableSelect($("#group_info_panel"), "group_users_list", opts);
+
+    refreshUserTableSelect($("#group_info_panel"), "group_users_list");
+
+    if (Config.isTabActionEnabled("groups-tab", "Group.edit_admins")) {
+        $("#group_info_panel").off("click", "#edit_admins_button");
+        $("#group_info_panel").on("click",  "#edit_admins_button", function() {
+            $("#edit_admins_button", "#group_info_panel").hide();
+            $("#cancel_admins_button", "#group_info_panel").show();
+            $("#submit_admins_button", "#group_info_panel").show();
+
+            $("#group_info_panel div.group_users_info_table").html(
+                generateUserTableSelect("group_users_edit_list") );
+
+
+            var opts = {
+                multiple_choice: true,
+                fixed_ids: users,
+                admin_ids: admins
+            }
+
+            setupUserTableSelect($("#group_info_panel"), "group_users_edit_list", opts);
+
+            selectUserTableSelect($("#group_info_panel"), "group_users_edit_list", { ids : admins });
+
+            return false;
+        });
+
+        $("#group_info_panel").off("click", "#cancel_admins_button");
+        $("#group_info_panel").on("click",  "#cancel_admins_button", function() {
+            Sunstone.runAction("Group.show", group_info.ID);
+            return false;
+        });
+
+        $("#group_info_panel").off("click", "#submit_admins_button");
+        $("#group_info_panel").on("click",  "#submit_admins_button", function() {
+            // Add/delete admins
+
+            var selected_admins_list = retrieveUserTableSelect(
+                            $("#group_info_panel"), "group_users_edit_list");
+
+            $.each(selected_admins_list, function(i,admin_id){
+                if (admins.indexOf(admin_id) == -1){
+                    Sunstone.runAction("Group.add_admin",
+                        group_info.ID, {admin_id : admin_id});
+                }
             });
 
-            updateView(obj_list_array, datatable);
-
-            if (group && group.RESOURCE_PROVIDER)
-            {
-                var rows = datatable.fnGetNodes();
-                providers_array = group.RESOURCE_PROVIDER;
-
-                if (!$.isArray(providers_array))
-                {
-                    providers_array = [providers_array];
+            $.each(admins, function(i,admin_id){
+                if (selected_admins_list.indexOf(admin_id) == -1){
+                    Sunstone.runAction("Group.del_admin",
+                        group_info.ID, {admin_id : admin_id});
                 }
+            });
 
-                $('#'+str_zone_tab_id+'resources_none').click();
+            return false;
+        });
+    }
 
-                $.each(providers_array, function(index, provider){
-                    if (provider.ZONE_ID==zone_id)
-                    {
-                        for(var j=0;j<rows.length;j++)
-                        {
-                            var current_row    = $(rows[j]);
-                            var row_cluster_id = $(rows[j]).find("td:eq(1)").html();
 
-                            if (provider.CLUSTER_ID == row_cluster_id)
-                            {
-                                current_row.click();
-                            }
-                        }
-                        if (provider.CLUSTER_ID == "10")
-                            $('#'+str_zone_tab_id+'resources_all').click();
-                        else
-                            $('#'+str_zone_tab_id+'resources_cluster').click();
-                    }
-                });
-            }
-        }
-    });
-};
-
-var add_resource_tab = function(zone_id, zone_name, dialog, selected_group_clusters, group) {
-    var str_zone_tab_id  = dialog.attr('id') + '_zone' + zone_id;
-    var str_datatable_id = dialog.attr('id') + '_datatable_group_clusters_zone_' + zone_id;
-
-    selected_group_clusters[zone_id] = {};
-
-    // Append the new div containing the tab and add the tab to the list
-    var html_tab_content = '<div id="'+str_zone_tab_id+'Tab" class="content">'+
-        generate_group_resource_tab_content(str_zone_tab_id, str_datatable_id, zone_id, group) +
-        '</div>'
-    $(html_tab_content).appendTo($(".group_zones_tabs_content", dialog));
-
-    var a = $("<dd>\
-        <a id='zone_tab"+str_zone_tab_id+"' href='#"+str_zone_tab_id+"Tab'>"+zone_name+"</a>\
-        </dd>").appendTo($("dl#group_zones_tabs", dialog));
-
-    // TODOO
-    //$(document).foundationTabs("set_tab", a);
-    $("dl#group_zones_tabs", dialog).children("dd").first().children("a").click();
-
-    var zone_section = $('#' +str_zone_tab_id+'Tab', dialog);
-    setup_group_resource_tab_content(zone_id, zone_section, str_zone_tab_id, str_datatable_id, selected_group_clusters, group);
-};
+}
 
 function disableAdminUser(dialog){
     $('#username',dialog).attr('disabled','disabled');
@@ -1024,6 +896,51 @@ function enableAdminUser(dialog){
     $('#pass',dialog).removeAttr("disabled");
     $('#driver',dialog).removeAttr("disabled");
     $('#custom_auth',dialog).removeAttr("disabled");
+};
+
+
+function generateUserViewsSelect(dialog, value) {
+  var views = [];
+  var old_value = $("#user_view_default").val();
+
+  $(".user_view_input:checked", dialog).each(function(){
+    views.push({
+      value: this.value,
+      name: (views_info[this.value] ? views_info[this.value].name : this.value)});
+  });
+
+  $(".user_view_default_container", dialog).html(
+    generateValueSelect({
+      id: 'user_view_default',
+      label: tr("Default Users View"),
+      options: views,
+      custom: false
+    }))
+
+  $("#user_view_default", dialog).val(value ? value : old_value).change();
+};
+
+function generateAdminViewsSelect(dialog, value) {
+  var views = [];
+  var old_value = value || $("#admin_view_default").val();
+
+  $(".admin_view_input:checked", dialog).each(function(){
+    views.push({
+      value: this.value,
+      name: (views_info[this.value] ? views_info[this.value].name : this.value)});
+  });
+
+  $(".admin_view_default_container", dialog).html(
+    generateValueSelect({
+      id: 'admin_view_default',
+      label: tr("Default Admins View"),
+      options: views,
+      custom: false
+    }))
+
+  if (old_value) {
+    $("#admin_view_default", dialog).val(old_value).change();
+  }
 };
 
 //Prepares the dialog to create
@@ -1062,16 +979,8 @@ function setupCreateGroupDialog(){
         var dialog = $create_group_dialog;
         if ($(this).prop('checked')) {
             enableAdminUser(dialog);
-
-            $.each($('[id^="group_admin_res"]', dialog), function(){
-                $(this).removeAttr("disabled");
-            });
         } else {
             disableAdminUser(dialog);
-
-            $.each($('[id^="group_admin_res"]', dialog), function(){
-                $(this).attr('disabled', 'disabled');
-            });
         }
     });
 
@@ -1081,28 +990,19 @@ function setupCreateGroupDialog(){
         $(this).prop("checked", true);
     });
 
-    $.each($('[id^="group_admin_res"]', dialog), function(){
-        $(this).attr('disabled', 'disabled');
-        $(this).prop("checked", true);
-    });
-
     $("#group_res_net", dialog).prop("checked", false);
-    $("#group_admin_res_net", dialog).prop("checked", false);
 
-    var selected_group_clusters = {};
+    generateAdminViewsSelect(dialog, "groupadmin");
+    $(dialog).off("change", ".admin_view_input");
+    $(dialog).on("change", ".admin_view_input", function(){
+      generateAdminViewsSelect(dialog);
+    })
 
-    OpenNebula.Zone.list({
-        timeout: true,
-        success: function (request, obj_list){
-            $.each(obj_list,function(){
-                add_resource_tab(this.ZONE.ID,
-                    this.ZONE.NAME,
-                    dialog,
-                    selected_group_clusters);
-            });
-        },
-        error: onError
-    });
+    generateUserViewsSelect(dialog, "cloud")
+    $(dialog).off("change", ".user_view_input")
+    $(dialog).on("change", ".user_view_input", function(){
+      generateUserViewsSelect(dialog)
+    })
 
     $('#create_group_form',dialog).submit(function(){
         var name = $('#name',this).val();
@@ -1128,33 +1028,6 @@ function setupCreateGroupDialog(){
             group_json["group"]["group_admin"] = user_json["user"];
         }
 
-        group_json['group']['resource_providers'] = [];
-
-        $.each(selected_group_clusters, function(zone_id, zone_clusters) {
-            var str_zone_tab_id = dialog.attr('id') + '_zone' + zone_id;
-
-            var resource_selection = $("input[name='"+str_zone_tab_id+"']:checked", dialog).val();
-            switch (resource_selection){
-            case "all":
-                // 10 is the special ID for ALL, see ClusterPool.h
-                group_json['group']['resource_providers'].push(
-                    {"zone_id" : zone_id, "cluster_id" : 10}
-                );
-
-                break;
-            case "cluster":
-                $.each(selected_group_clusters[zone_id], function(key, value) {
-                    group_json['group']['resource_providers'].push(
-                        {"zone_id" : zone_id, "cluster_id" : key}
-                    );
-                });
-
-                break;
-            default: // "none"
-
-            }
-        });
-
         var resources = "";
         var separator = "";
 
@@ -1169,27 +1042,26 @@ function setupCreateGroupDialog(){
             group_json['group']['shared_resources'] = "VM+DOCUMENT";
         }
 
-        if (user_json){
-            resources = "";
-            separator = "";
-
-            $.each($('[id^="group_admin_res"]:checked', dialog), function(){
-                resources += (separator + $(this).val());
-                separator = "+";
-            });
-
-            group_json["group"]["group_admin"]["resources"] = resources;
-        }
-
         group_json['group']['views'] = [];
 
         $.each($('[id^="group_view"]:checked', dialog), function(){
             group_json['group']['views'].push($(this).val());
         });
 
-        var default_view = $('[id^="group_default_view"]:checked', dialog).val();
+        var default_view = $('#user_view_default', dialog).val();
         if (default_view != undefined){
             group_json['group']['default_view'] = default_view;
+        }
+
+        group_json['group']['admin_views'] = [];
+
+        $.each($('[id^="group_admin_view"]:checked', dialog), function(){
+            group_json['group']['admin_views'].push($(this).val());
+        });
+
+        var default_view = $('#admin_view_default', dialog).val();
+        if (default_view != undefined){
+            group_json['group']['default_admin_view'] = default_view;
         }
 
         Sunstone.runAction("Group.create",group_json);
@@ -1219,6 +1091,7 @@ function setupUpdateGroupDialog(){
     setupTips($update_group_dialog);
 
     // Hide create button
+    $('#default_vdc_warning',$update_group_dialog).hide();
     $('#create_group_submit',$update_group_dialog).hide();
     $('#create_group_header',$update_group_dialog).hide();
     $('#create_group_reset_button',$update_group_dialog).hide();
@@ -1228,6 +1101,16 @@ function setupUpdateGroupDialog(){
 
     $("a[href='#administrators']", dialog).parents("dd").hide();
     $("a[href='#resource_creation']", dialog).parents("dd").hide();
+
+    $(dialog).off("change", ".admin_view_input")
+    $(dialog).on("change", ".admin_view_input", function(){
+      generateAdminViewsSelect(dialog);
+    })
+
+    $(dialog).off("change", ".user_view_input")
+    $(dialog).on("change", ".user_view_input", function(){
+      generateUserViewsSelect(dialog)
+    })
 
     $update_group_dialog.foundation();
 }
@@ -1259,133 +1142,93 @@ function popUpUpdateGroupDialog(group, dialog)
 
     var views_str = "";
 
+    $('input[id^="group_view"]', dialog).removeAttr('checked');
+
     if (group.TEMPLATE.SUNSTONE_VIEWS){
         views_str = group.TEMPLATE.SUNSTONE_VIEWS;
 
         var views = views_str.split(",");
         $.each(views, function(){
-            $('input[id^="group_view"][value="'+this.trim()+'"]', dialog).attr('checked','checked');
+            $('input[id^="group_view"][value="'+this.trim()+'"]',
+                dialog).attr('checked','checked').change();
         });
     }
 
-    var selected_group_clusters = {};
+    $('input[id^="group_default_view"]', dialog).removeAttr('checked');
 
-    OpenNebula.Zone.list({
-        timeout: true,
-        success: function (request, obj_list){
-            $.each(obj_list,function(){
-                add_resource_tab(this.ZONE.ID,
-                                 this.ZONE.NAME,
-                                 dialog,
-                                 selected_group_clusters,
-                                 group);
-            });
-        },
-        error: onError
-    });
+    if (group.TEMPLATE.DEFAULT_VIEW){
+      $('#user_view_default', dialog).val(group.TEMPLATE.DEFAULT_VIEW.trim()).change();
+    } else {
+      $('#user_view_default', dialog).val("").change();
+    }
 
+    $('input[id^="group_admin_view"]', dialog).removeAttr('checked');
+
+    if (group.TEMPLATE.GROUP_ADMIN_VIEWS){
+        views_str = group.TEMPLATE.GROUP_ADMIN_VIEWS;
+
+        var views = views_str.split(",");
+        $.each(views, function(){
+            $('input[id^="group_admin_view"][value="'+this.trim()+'"]',
+                dialog).attr('checked','checked').change();
+        });
+    }
+
+    $('input[id^="group_default_admin_view"]', dialog).removeAttr('checked');
+
+    if (group.TEMPLATE.GROUP_ADMIN_DEFAULT_VIEW){
+      $('#admin_view_default', dialog).val(group.TEMPLATE.GROUP_ADMIN_DEFAULT_VIEW.trim()).change();
+    } else {
+      $('#admin_view_default', dialog).val("").change();
+    }
 
     $(dialog).off("click", 'button#update_group_submit');
     $(dialog).on("click", 'button#update_group_submit', function(){
 
         // Update Views
         //-------------------------------------
-        var new_views_str = "";
-        var separator     = "";
+        var template_json = group.TEMPLATE;
+
+        delete template_json["SUNSTONE_VIEWS"];
+        delete template_json["DEFAULT_VIEW"];
+        delete template_json["GROUP_ADMIN_VIEWS"];
+        delete template_json["GROUP_ADMIN_DEFAULT_VIEW"];
+
+        var views = [];
 
         $.each($('[id^="group_view"]:checked', dialog), function(){
-            new_views_str += (separator + $(this).val());
-            separator = ",";
+            views.push($(this).val());
         });
 
-        if (new_views_str != views_str){
-            var template_json = group.TEMPLATE;
-            delete template_json["SUNSTONE_VIEWS"];
-            template_json["SUNSTONE_VIEWS"] = new_views_str;
-
-            var template_str = convert_template_to_string(template_json);
-
-            Sunstone.runAction("Group.update_template",group.ID,template_str);
+        if (views.length != 0){
+            template_json["SUNSTONE_VIEWS"] = views.join(",");
         }
 
-        // Update Resource Providers
-        //-------------------------------------
+        var default_view = $('#user_view_default', dialog).val();
 
-        var old_resource_providers = group.RESOURCE_PROVIDER;
-
-        if (!old_resource_providers) {
-            old_resource_providers = new Array();
-        } else if (!$.isArray(old_resource_providers)) {
-            old_resource_providers = [old_resource_providers];
+        if (default_view != undefined){
+            template_json["DEFAULT_VIEW"] = default_view;
         }
 
-        var new_resource_providers = [];
+        var admin_views = [];
 
-        $.each(selected_group_clusters, function(zone_id, zone_clusters) {
-            var str_zone_tab_id = dialog.attr('id') + '_zone' + zone_id;
-
-            var resource_selection = $("input[name='"+str_zone_tab_id+"']:checked", dialog).val();
-            switch (resource_selection){
-            case "all":
-                // 10 is the special ID for ALL, see ClusterPool.h
-                new_resource_providers.push(
-                    {"zone_id" : zone_id, "cluster_id" : 10}
-                );
-
-                break;
-            case "cluster":
-                $.each(selected_group_clusters[zone_id], function(key, value) {
-                    new_resource_providers.push(
-                        {"zone_id" : zone_id, "cluster_id" : key}
-                    );
-                });
-
-                break;
-            default: // "none"
-
-            }
+        $.each($('[id^="group_admin_view"]:checked', dialog), function(){
+            admin_views.push($(this).val());
         });
 
-        $.each(old_resource_providers, function(index, old_res_provider){
-            found = false;
+        if (admin_views.length != 0){
+            template_json["GROUP_ADMIN_VIEWS"] = admin_views.join(",");
+        }
 
-            $.each(new_resource_providers, function(index, new_res_provider){
-                found = (old_res_provider.ZONE_ID == new_res_provider.zone_id &&
-                         old_res_provider.CLUSTER_ID == new_res_provider.cluster_id);
+        var default_admin_view = $('#admin_view_default', dialog).val();
 
-                return !found;
-            });
+        if (default_admin_view != undefined){
+            template_json["GROUP_ADMIN_DEFAULT_VIEW"] = default_admin_view;
+        }
 
-            if (!found) {
-                var extra_param = {
-                    "zone_id"    : old_res_provider.ZONE_ID,
-                    "cluster_id" : old_res_provider.CLUSTER_ID
-                };
+        var template_str = convert_template_to_string(template_json);
 
-                Sunstone.runAction("Group.del_provider_action",
-                                   group.ID,
-                                   extra_param);
-            }
-        });
-
-        $.each(new_resource_providers, function(index, new_res_provider){
-            found = false;
-
-            $.each(old_resource_providers, function(index, old_res_provider){
-                found = (old_res_provider.ZONE_ID == new_res_provider.zone_id &&
-                         old_res_provider.CLUSTER_ID == new_res_provider.cluster_id);
-
-                return !found;
-            });
-
-            if (!found) {
-                var extra_param = new_res_provider;
-
-                Sunstone.runAction("Group.add_provider_action",
-                                   group.ID,
-                                   extra_param);
-            }
-        });
+        Sunstone.runAction("Group.update_template",group.ID,template_str);
 
         // Close the dialog
         //-------------------------------------

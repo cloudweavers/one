@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -478,9 +478,11 @@ class ExecDriver < VirtualMachineDriver
         action = VmmAction.new(self, id, :migrate, drv_message)
         pre    = "PRE"
         post   = "POST"
+        failed = "FAIL"
 
         pre  << action.data[:tm_command] << " " << action.data[:vm]
         post << action.data[:tm_command] << " " << action.data[:vm]
+        failed << action.data[:tm_command] << " " << action.data[:vm]
 
         steps=[
             # Execute a pre-migrate TM setup
@@ -499,7 +501,15 @@ class ExecDriver < VirtualMachineDriver
             {
                 :driver     => :vmm,
                 :action     => :migrate,
-                :parameters => [:deploy_id, :dest_host, :host]
+                :parameters => [:deploy_id, :dest_host, :host],
+                :fail_actions => [
+                    {
+                        :driver     => :tm,
+                        :action     => :tm_failmigrate,
+                        :parameters => failed.split,
+                        :no_fail    => true
+                    }
+                ]
             },
             # Execute networking clean up operations
             # NOTE: VM is now in the new host. If we fail from now on, oned will

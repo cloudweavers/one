@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -55,10 +55,33 @@ public:
         separator    = t.separator;
         xml_root     = t.xml_root;
 
+        attributes.clear();
+
         for (it = t.attributes.begin() ; it != t.attributes.end() ; it++)
         {
             attributes.insert(make_pair(it->first,(it->second)->clone()));
         }
+    }
+
+    Template& operator=(const Template& t)
+    {
+        multimap<string,Attribute *>::const_iterator it;
+
+        if (this != &t)
+        {
+            replace_mode = t.replace_mode;
+            separator    = t.separator;
+            xml_root     = t.xml_root;
+
+            attributes.clear();
+
+            for (it = t.attributes.begin() ; it != t.attributes.end() ; it++)
+            {
+                attributes.insert(make_pair(it->first,(it->second)->clone()));
+            }
+        }
+
+        return *this;
     }
 
     /**
@@ -126,6 +149,11 @@ public:
      *    @return a reference to the generated string
      */
     string& to_str(string& str) const;
+
+    /**
+     *  Clears all the attributes from the template
+     */
+    void clear();
 
     /**
      *  Sets a new attribute, the attribute MUST BE ALLOCATED IN THE HEAP, and

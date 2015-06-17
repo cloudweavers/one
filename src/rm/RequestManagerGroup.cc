@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -82,28 +82,23 @@ void GroupSetQuota::
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-void GroupEditProvider::request_execute(
+void GroupEditAdmin::request_execute(
         xmlrpc_c::paramList const&  paramList,
         RequestAttributes&          att)
 {
     int group_id    = xmlrpc_c::value_int(paramList.getInt(1));
-    int zone_id     = xmlrpc_c::value_int(paramList.getInt(2));
-    int cluster_id  = xmlrpc_c::value_int(paramList.getInt(3));
+    int user_id     = xmlrpc_c::value_int(paramList.getInt(2));
 
     PoolObjectAuth group_perms;
-    PoolObjectAuth zone_perms;
-    PoolObjectAuth cluster_perms;
+    PoolObjectAuth user_perms;
 
     string group_name;
-    string zone_name;
-    string cluster_name;
+    string user_name;
     string error_str;
 
     Group* group;
 
     int rc;
-    bool zone_exists = false;
-    bool cluster_exists = false;
 
     // -------------------------------------------------------------------------
     // Authorize the action
@@ -117,52 +112,24 @@ void GroupEditProvider::request_execute(
         return;
     }
 
-    rc = get_info(zonepool, zone_id, PoolObjectSQL::ZONE, att, zone_perms,
-                    zone_name, false);
+    rc = get_info(upool, user_id, PoolObjectSQL::USER, att, user_perms,
+                    user_name, false);
 
-    zone_exists = (rc == 0);
-
-    if ( rc == -1 && check_obj_exist )
+    if ( rc == -1 )
     {
-        failure_response(NO_EXISTS, get_error(object_name(PoolObjectSQL::ZONE),
-                zone_id), att);
+        failure_response(NO_EXISTS, get_error(object_name(PoolObjectSQL::USER),
+                user_id), att);
 
         return;
-    }
-
-    // TODO: cluster must exist in target zone, this code only checks locally
-
-    if (cluster_id != ClusterPool::ALL_RESOURCES && zone_id == local_zone_id)
-    {
-        rc = get_info(clpool, cluster_id, PoolObjectSQL::CLUSTER, att,
-                        cluster_perms, cluster_name, false);
-
-        cluster_exists = (rc == 0);
-
-        if ( rc == -1 && check_obj_exist )
-        {
-            failure_response(NO_EXISTS, get_error(object_name(PoolObjectSQL::CLUSTER),
-                    cluster_id), att);
-
-            return;
-        }
     }
 
     if ( att.uid != 0 )
     {
         AuthRequest ar(att.uid, att.group_ids);
 
-        ar.add_auth(AuthRequest::ADMIN, group_perms);       // ADMIN GROUP
+        ar.add_auth(AuthRequest::ADMIN, group_perms);   // MANAGE GROUP
 
-        if (zone_exists)
-        {
-            ar.add_auth(AuthRequest::ADMIN, zone_perms);    // ADMIN ZONE
-        }
-
-        if (cluster_exists)
-        {
-            ar.add_auth(AuthRequest::ADMIN, cluster_perms); // ADMIN CLUSTER
-        }
+        ar.add_auth(AuthRequest::ADMIN, user_perms);    // MANAGE USER
 
         if (UserPool::authorize(ar) == -1)
         {
@@ -185,7 +152,7 @@ void GroupEditProvider::request_execute(
         return;
     }
 
-    rc = edit_resource_provider(group, zone_id, cluster_id, error_str);
+    rc = edit_admin(group, user_id, error_str);
 
     if (rc == 0)
     {
@@ -197,7 +164,7 @@ void GroupEditProvider::request_execute(
     if (rc != 0)
     {
         failure_response(INTERNAL,
-                request_error("Cannot edit resources", error_str),
+                request_error("Cannot edit group", error_str),
                 att);
 
         return;
@@ -209,17 +176,18 @@ void GroupEditProvider::request_execute(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-int GroupAddProvider::edit_resource_provider(
-        Group* group, int zone_id, int cluster_id, string& error_msg)
+int GroupAddAdmin::edit_admin(Group* group, int user_id, string& error_msg)
 {
-    return group->add_resource_provider(zone_id, cluster_id, error_msg);
+    return group->add_admin(user_id, error_msg);
 }
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-int GroupDelProvider::edit_resource_provider(
-        Group* group, int zone_id, int cluster_id, string& error_msg)
+int GroupDelAdmin::edit_admin(Group* group, int user_id, string& error_msg)
 {
-    return group->del_resource_provider(zone_id, cluster_id, error_msg);
+    return group->del_admin(user_id, error_msg);
 }
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */

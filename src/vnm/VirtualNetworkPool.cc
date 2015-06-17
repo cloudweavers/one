@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -248,6 +248,8 @@ int VirtualNetworkPool::nic_attribute(VectorAttribute * nic,
     string           network;
     VirtualNetwork * vnet = 0;
 
+    nic->replace("NIC_ID", nic_id);
+
     if (!(network = nic->vector_value("NETWORK")).empty())
     {
         vnet = get_nic_by_name (nic, network, uid, error);
@@ -271,8 +273,6 @@ int VirtualNetworkPool::nic_attribute(VectorAttribute * nic,
     if ( rc == 0 )
     {
         update(vnet);
-
-        nic->replace("NIC_ID", nic_id);
     }
     else
     {

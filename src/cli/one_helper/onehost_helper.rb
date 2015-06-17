@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -167,6 +167,11 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
 
     NUM_THREADS = 15
     def sync(host_ids, options)
+        if `id -u`.to_i == 0 || `id -G`.split.collect{|e| e.to_i}.include?(0)
+            STDERR.puts("Cannot run 'onehost sync' as root")
+            exit -1
+        end
+
         begin
             current_version = File.read(REMOTES_LOCATION+'/VERSION').strip
         rescue
@@ -222,6 +227,12 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
             elsif cluster_id
                 next if host['CLUSTER_ID'].to_i != cluster_id
             end
+
+            vm_mad = host['VM_MAD'].downcase
+            remote_remotes = host['TEMPLATE/REMOTE_REMOTES']
+
+            # Skip this host from remote syncing if it's a PUBLIC_CLOUD host
+            next if host['TEMPLATE/PUBLIC_CLOUD'] == 'YES'
 
             host_version=host['TEMPLATE/VERSION']
 
@@ -400,7 +411,43 @@ class OneHostHelper < OpenNebulaHelper::OneHelper
 
         CLIHelper.print_header(str_h1 % "MONITORING INFORMATION", false)
 
+        wilds = host.wilds
+
+        host.delete_element("TEMPLATE/VM")
+        host.delete_element("TEMPLATE_WILDS")
+
         puts host.template_str
+
+        puts
+        CLIHelper.print_header("WILD VIRTUAL MACHINES", false)
+        puts
+
+        format = "%30s %36s %4s %10s"
+        CLIHelper.print_header(format % ["NAME", "IMPORT_ID", "CPU", "MEMORY"],
+                               true)
+
+        wilds.each do |wild|
+          if wild['IMPORT_TEMPLATE']
+            wild_tmplt = Base64::decode64(wild['IMPORT_TEMPLATE']).split("\n")
+            name   = wild_tmplt.select { |line|
+                      line[/^NAME/]
+                     }[0].split("=")[1].gsub("\"", " ").strip
+            import = wild_tmplt.select { |line|
+                       line[/^IMPORT_VM_ID/]
+                     }[0].split("=")[1].gsub("\"", " ").strip
+            memory = wild_tmplt.select { |line|
+                       line[/^MEMORY/]
+                     }[0].split("=")[1].gsub("\"", " ").strip
+            cpu    = wild_tmplt.select { |line|
+                        line[/^CPU/]
+                     }[0].split("=")[1].gsub("\"", " ").strip
+          else
+            name     = wild['DEPLOY_ID']
+            import   = memory = cpu = "-"
+          end
+
+          puts format % [name, import, cpu, memory]
+        end
 
         puts
         CLIHelper.print_header("VIRTUAL MACHINES", false)

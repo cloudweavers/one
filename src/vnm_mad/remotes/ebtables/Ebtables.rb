@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -27,7 +27,7 @@ class EbtablesVLAN < VNMMAD::VNMDriver
     end
 
     def ebtables(rule)
-        OpenNebula.exec_and_log("#{COMMANDS[:ebtables]} -A #{rule}")
+        OpenNebula.exec_and_log("#{command(:ebtables)} -A #{rule}")
     end
 
     # Activates ebtables rules
@@ -62,8 +62,15 @@ class EbtablesVLAN < VNMMAD::VNMDriver
     def deactivate
         lock
 
+        attach_nic_id = @vm['TEMPLATE/NIC[ATTACH="YES"]/NIC_ID']
+
         process do |nic|
+            if attach_nic_id && attach_nic_id != nic[:nic_id]
+                next
+            end
+
             mac = nic[:mac]
+
             # remove 0-padding
             mac = mac.split(":").collect{|e| e.hex.to_s(16)}.join(":")
 
@@ -83,7 +90,7 @@ class EbtablesVLAN < VNMMAD::VNMDriver
     end
 
     def rules
-        `#{COMMANDS[:ebtables]} -L FORWARD`.split("\n")[3..-1]
+        `#{command(:ebtables)} -L FORWARD`.split("\n")[3..-1]
     end
 
     def remove_rules(tap)
@@ -95,6 +102,6 @@ class EbtablesVLAN < VNMMAD::VNMDriver
     end
 
     def remove_rule(rule)
-        OpenNebula.exec_and_log("#{COMMANDS[:ebtables]} -D FORWARD #{rule}")
+        OpenNebula.exec_and_log("#{command(:ebtables)} -D FORWARD #{rule}")
     end
 end

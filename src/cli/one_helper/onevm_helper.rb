@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,8 +14,38 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+if !ONE_LOCATION
+    MAD_LOCATION      = "/usr/lib/one/mads"
+    VAR_LOCATION      = "/var/lib/one"
+else
+    MAD_LOCATION      = ONE_LOCATION + "/lib/mads"
+    VAR_LOCATION      = ONE_LOCATION + "/var"
+end
+
+VMS_LOCATION = VAR_LOCATION + "/vms"
+
+$: << MAD_LOCATION
+
 require 'one_helper'
 require 'optparse/time'
+require 'one_tm'
+
+class String
+    def red
+        colorize(31)
+    end
+
+    def green
+        colorize(32)
+    end
+
+private
+
+    def colorize(color_code)
+        "\e[#{color_code}m#{self}\e[0m"
+    end
+end
+
 
 class OneVMHelper < OpenNebulaHelper::OneHelper
     MULTIPLE={
@@ -123,6 +153,45 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
         return short_state_str
     end
 
+    # Return the IP or several IPs of a VM
+    def self.ip_str(vm)
+        ips = []
+
+        vm_nics = []
+
+        if !vm["TEMPLATE"]["NIC"].nil?
+            vm_nics = [vm["TEMPLATE"]['NIC']].flatten
+        end
+
+        vm_nics.each do |nic|
+            if nic.has_key?("IP")
+                ips.push(nic["IP"])
+            end
+
+            if nic.has_key?("IP6_GLOBAL")
+                ips.push(nic["IP6_GLOBAL"])
+            end
+
+            if nic.has_key?("IP6_ULA")
+                ips.push(nic["IP6_ULA"])
+            end
+        end
+
+        VirtualMachine::EXTERNAL_IP_ATTRS.each do |attr|
+            external_ip = vm["TEMPLATE"][attr]
+
+            if !external_ip.nil? && !ips.include?(external_ip)
+                ips.push(external_ip)
+            end
+        end
+
+        if ips.empty?
+            return "--"
+        else
+            return ips.join(",")
+        end
+    end
+
     def format_pool(options)
         config_file = self.class.table_conf
 
@@ -208,6 +277,10 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
                 OpenNebulaHelper.period_to_str(dtime, false)
             end
 
+            column :IP, "VM IP addresses", :left, :donottruncate, :size=>15 do |d|
+                OneVMHelper.ip_str(d)
+            end
+
             default :ID, :USER, :GROUP, :NAME, :STAT, :UCPU, :UMEM, :HOST,
                 :TIME
         end
@@ -245,6 +318,123 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
 
             vm.update(tmp_str)
         end
+    end
+
+    RECOVER_RETRY_STEPS = {
+        :PROLOG_MIGRATE_FAILURE          => :migrate,
+        :PROLOG_MIGRATE_POWEROFF_FAILURE => :migrate,
+        :PROLOG_MIGRATE_SUSPEND_FAILURE  => :migrate,
+        :PROLOG_FAILURE                  => :prolog,
+        :PROLOG_RESUME_FAILURE           => :resume,
+        :PROLOG_UNDEPLOY_FAILURE         => :resume,
+        :EPILOG_FAILURE                  => :epilog,
+        :EPILOG_STOP_FAILURE             => :stop,
+        :EPILOG_UNDEPLOY_FAILURE         => :stop
+    }
+
+    def recover_retry_interactive(vm)
+        # Disable CTRL-C in the menu
+        trap("SIGINT") { }
+
+        if !File.readable?(VAR_LOCATION+"/config")
+            STDERR.puts "Error reading #{VAR_LOCATION+'/config'}. The " <<
+                "TM Debug Interactive Environment must be executed as " <<
+                "oneadmin in the frontend."
+            exit -1
+        end
+
+        rc = vm.info
+        if OpenNebula.is_error?(rc)
+            STDERR.puts rc.message
+            exit -1
+        end
+
+        if !RECOVER_RETRY_STEPS.include?(vm.lcm_state_str.to_sym)
+            STDERR.puts "Current LCM STATE '#{vm.lcm_state_str}' not " <<
+                "compatible with RECOVER RETRY action."
+            exit -1
+        end
+
+        seq = vm['/VM/HISTORY_RECORDS/HISTORY[last()]/SEQ']
+
+        tm_action = RECOVER_RETRY_STEPS[vm.lcm_state_str.to_sym]
+
+        tm_file = "#{VMS_LOCATION}/#{vm.id}/transfer.#{seq}.#{tm_action}"
+
+        if !File.readable?(tm_file)
+            STDERR.puts "Cannot read #{tm_file}"
+            exit -1
+        end
+
+        @tm_action_list = File.read(tm_file)
+
+        puts "TM Debug Interactive Environment.".green
+        puts
+        print_tm_action_list
+
+        @tm = TransferManagerDriver.new(nil)
+        i=0
+        @tm_action_list.lines.each do |tm_command|
+            i+=1
+            success=false
+
+            while !success
+                puts "Current action (#{i}):".green
+                puts tm_command
+                puts
+
+                puts <<-EOF.gsub(/^\s+/,"")
+                Choose action:
+                (r) Run action
+                (n) Skip to next action
+                (a) Show all actions
+                (q) Quit
+                EOF
+
+                ans = ""
+                while !%w(n a r q).include?(ans)
+                    printf "> "
+                    ans = STDIN.gets.strip.downcase
+
+                    puts
+
+                    case ans
+                    when "n"
+                        success = true
+                    when "a"
+                        print_tm_action_list
+                    when "q"
+                        exit -1
+                    when "r"
+                        result, result_message = @tm.do_transfer_action(@id, tm_command.split)
+
+                        if result == "SUCCESS"
+                            success = true
+                            puts "#{result}"
+                            puts
+                        else
+                            puts
+                            puts "#{result}. Repeat command.".red
+                            puts
+                        end
+                    end
+                end
+            end
+        end
+
+        puts "If all the TM actions have been successful and you want to"
+        puts "recover the Virtual Machine to the RUNNING state execute this command:"
+        puts "$ onevm recover #{vm.id} --success"
+    end
+
+    def print_tm_action_list
+        puts "TM Action list:".green
+        i=0
+        @tm_action_list.lines.each do |line|
+            i+=1
+            puts "(#{i}) #{line}"
+        end
+        puts
     end
 
     private
@@ -341,7 +531,28 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
             puts str % [e,  mask]
         }
 
+        vm_disks = []
+
         if vm.has_elements?("/VM/TEMPLATE/DISK")
+            vm_disks = [vm.to_hash['VM']['TEMPLATE']['DISK']].flatten
+        end
+
+        if vm.has_elements?("/VM/TEMPLATE/CONTEXT")
+            context_disk = vm.to_hash['VM']['TEMPLATE']['CONTEXT']
+
+            context_disk["IMAGE"] = "CONTEXT"
+            context_disk["DATASTORE"] = "-"
+            context_disk["TYPE"] = "-"
+            context_disk["READONLY"] = "-"
+            context_disk["SAVE"] = "-"
+            context_disk["CLONE"] = "-"
+            context_disk["SAVE_AS"] = "-"
+
+            vm_disks.push(context_disk)
+        end
+
+
+        if !vm_disks.empty?
             puts
             CLIHelper.print_header(str_h1 % "VM DISKS",false)
             CLIHelper::ShowTable.new(nil, self) do
@@ -390,48 +601,19 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
                     d["CLONE"]
                 end
 
-                column :"SAVE_AS", "", :size=>7 do |d|
-                    d["SAVE_AS"] || "-"
-                end
-
-
                 default :ID, :TARGET, :IMAGE, :TYPE,
-                    :SAVE, :SAVE_AS
-            end.show([vm.to_hash['VM']['TEMPLATE']['DISK']].flatten, {})
+                    :SAVE
+            end.show(vm_disks, {})
 
             while vm.has_elements?("/VM/TEMPLATE/DISK")
                 vm.delete_element("/VM/TEMPLATE/DISK")
             end if !options[:all]
         end
 
-        if vm.has_elements?("/VM/USER_TEMPLATE/HYPERVISOR")
-            vm_information = vm.to_hash['VM']
-            hybridvisor    = vm_information['USER_TEMPLATE']['HYPERVISOR'].to_s
-            isHybrid       = %w{vcenter ec2 azure softlayer}.include? hybridvisor
-
-            if isHybrid
-                vm_tmplt = vm_information['TEMPLATE']
-                nic =   {"NETWORK" => "-",
-                           "IP" => "-",
-                           "MAC"=> "-",
-                           "VLAN"=>"no",
-                           "BRIDGE"=>"-"}
-
-                case hybridvisor
-                    when "vcenter"
-                        nic["IP"] = vm_tmplt['GUEST_IP'] if vm_tmplt['GUEST_IP']
-                    when "ec2"
-                        nic["IP"] = vm_tmplt['IP_ADDRESS'] if vm_tmplt['IP_ADDRESS']
-                    when "azure"
-                        nic["IP"] = vm_tmplt['IPADDRESS'] if vm_tmplt['IPADDRESS']
-                    when "softlayer"
-                        nic["IP"] = vm_tmplt['PRIMARYIPADDRESS'] if vm_tmplt['PRIMARYIPADDRESS']
-                    else
-                        isHybrid = false
-                end
-
-                vm_nics = [nic]
-            end
+        if vm.has_elements?("/VM/SNAPSHOTS")
+            puts
+            CLIHelper.print_header(str_h1 % "VM DISK SNAPSHOTS",false)
+            format_snapshots(vm)
         end
 
         sg_nics = []
@@ -448,32 +630,9 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
             end
         end
 
-        if vm.has_elements?("/VM/TEMPLATE/NIC") || vm_nics
+        if vm.has_elements?("/VM/TEMPLATE/NIC")
             puts
             CLIHelper.print_header(str_h1 % "VM NICS",false)
-
-            # vm_nics is defined for hybridvisors. If there are both IP from
-            # the hybridvisor and from OpenNebula nics check if the IP is the
-            # same as one of IPs generated by OpenNebula and show standard
-            # information. If it's a different IP show all the information.
-            #
-            # The template can already contain one NIC not controled by
-            # OpenNebula and we want to show also that info.
-            if vm_nics
-                if vm.has_elements?("/VM/TEMPLATE/NIC")
-                    nics = [vm.to_hash['VM']['TEMPLATE']['NIC']].flatten
-                    ips = nics.map {|n| n['IP'] }
-                    ip = vm_nics.first['IP']
-
-                    if ips.include? ip
-                        vm_nics = nics
-                    else
-                        vm_nics += nics
-                    end
-                end
-            else
-                vm_nics = [vm.to_hash['VM']['TEMPLATE']['NIC']].flatten
-            end
 
             nic_default = {"NETWORK" => "-",
                            "IP" => "-",
@@ -482,7 +641,7 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
                            "BRIDGE"=>"-"}
 
             array_id = 0
-
+            vm_nics = [vm.to_hash['VM']['TEMPLATE']['NIC']].flatten
             vm_nics.each {|nic|
 
                 next if nic.has_key?("CLI_DONE")
@@ -782,5 +941,60 @@ class OneVMHelper < OpenNebulaHelper::OneHelper
         history=[vm_hash['VM']['HISTORY_RECORDS']['HISTORY']].flatten
 
         table.show(history)
+    end
+
+    def format_snapshots(vm)
+        table=CLIHelper::ShowTable.new(nil, self) do
+            column :AC , "Is active", :left, :size => 2 do |d|
+                if d["ACTIVE"] == "YES"
+                    "=>"
+                else
+                    ""
+                end
+            end
+            column :ID, "Snapshot ID", :size=>3 do |d|
+                d["ID"]
+            end
+
+            column :DISK, "Disk ID", :size=>4 do |d|
+                d["DISK_ID"]
+            end
+
+            column :PARENT, "Snapshot Parent ID", :size=>6 do |d|
+                d["PARENT"]
+            end
+
+            column :CHILDREN, "Snapshot Children IDs", :size=>10 do |d|
+                d["CHILDREN"]
+            end
+
+            column :TAG, "Snapshot Tag", :left, :size=>45 do |d|
+                d["TAG"]
+            end
+
+            column :DATE, "Snapshot creation date", :size=>15 do |d|
+                OpenNebulaHelper.time_to_str(d["DATE"])
+            end
+
+            default :AC, :ID, :DISK, :PARENT, :DATE, :CHILDREN, :TAG
+        end
+
+        # Convert snapshot data to an array
+        vm_hash = vm.to_hash
+        vm_snapshots = [vm_hash['VM']['SNAPSHOTS']].flatten
+
+        snapshots = []
+
+        vm_snapshots.each do |disk|
+            disk_id = disk['DISK_ID']
+
+            sshots = [disk['SNAPSHOT']].flatten
+            sshots.each do |snapshot|
+                data = snapshot.merge({ 'DISK_ID' => disk_id })
+                snapshots << data
+            end
+        end
+
+        table.show(snapshots)
     end
 end

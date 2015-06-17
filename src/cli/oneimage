@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -97,7 +97,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
 
             oneimage create -d default centOS.tmpl
 
-          - new image "arch" using a path of type centOS:
+          - new image "arch" using a path:
 
             oneimage create -d default --name arch --path /tmp/arch.img
 
@@ -298,6 +298,36 @@ cmd=CommandParser::CmdParser.new(ARGV) do
     command :rename, rename_desc, :imageid, :name do
         helper.perform_action(args[0],options,"renamed") do |o|
             o.rename(args[1])
+        end
+    end
+
+    snapshot_delete_desc = <<-EOT.unindent
+        Deletes a snapshot from the image
+    EOT
+
+    command :"snapshot-delete", snapshot_delete_desc, :imageid, :snapshot_id do
+        helper.perform_action(args[0], options, "snapshot deleted") do |o|
+            o.snapshot_delete(args[1].to_i)
+        end
+    end
+
+    snapshot_revert_desc = <<-EOT.unindent
+        Reverts image state to a snapshot
+    EOT
+
+    command :"snapshot-revert", snapshot_revert_desc, :imageid, :snapshot_id do
+        helper.perform_action(args[0], options, "image state reverted") do |o|
+            o.snapshot_revert(args[1].to_i)
+        end
+    end
+
+    snapshot_flatten_desc = <<-EOT.unindent
+        Flattens the snapshot and removes all other snapshots in the image
+    EOT
+
+    command :"snapshot-flatten", snapshot_flatten_desc, :imageid, :snapshot_id do
+        helper.perform_action(args[0], options, "snapshot flattened") do |o|
+            o.snapshot_flatten(args[1].to_i)
         end
     end
 

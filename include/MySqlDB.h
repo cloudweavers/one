@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -75,6 +75,14 @@ public:
      */
     void free_str(char * str);
 
+    /**
+     * Returns true if the syntax INSERT VALUES (data), (data), (data)
+     * is supported
+     *
+     * @return true if supported
+     */
+    bool multiple_values_support();
+
 private:
 
     /**
@@ -148,6 +156,8 @@ public:
     char * escape_str(const string& str){return 0;};
 
     void free_str(char * str){};
+
+    bool multiple_values_support(){return true;};
 };
 #endif
 

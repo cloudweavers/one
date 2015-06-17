@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -24,9 +24,11 @@ JUNIT_JAR="/usr/share/java/junit4.jar"
 if [ -z $ONE_LOCATION ]; then
     DB_LOCATION="/var/lib/one/one.db"
     LOG_LOCATION="/var/log/one"
+    AUTH_LOCATION="/var/lib/one/.one"
 else
     DB_LOCATION="$ONE_LOCATION/var/one.db"
     LOG_LOCATION="$ONE_LOCATION/var"
+    AUTH_LOCATION="$ONE_LOCATION/var/.one"
 fi
 
 if [ -f $DB_LOCATION ]; then
@@ -37,6 +39,8 @@ fi
 echo "========================================================================="
 echo "Doing $1"
 echo "========================================================================="
+
+rm -rf $AUTH_LOCATION
 
 PID=$$
 

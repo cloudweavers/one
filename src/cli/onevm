@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -91,11 +91,25 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         :description => "Recover a VM by failing the pending action"
     }
 
-    CLONETEMPLATE={
-        :name => "clonetemplate",
-        :short => "-c",
-        :large => "--clonetemplate",
-        :description => "Clone original VM Template and replace disk with saved one"
+    RETRY={
+        :name  => "retry",
+        :large => "--retry",
+        :description => "Recover a VM by retrying the last failed action"
+    }
+
+    INTERACTIVE={
+        :name  => "interactive",
+        :large => "--interactive",
+        :description => "Enables interactive recovery. Only works alongside "<<
+            " the --retry option."
+    }
+
+    SNAP={
+        :name  => "snapshot",
+        :short => "-s snapshot",
+        :large => "--snapshot snapshot",
+        :format => String,
+        :description => "ID of the Snapshot to save."
     }
 
     ########################################################################
@@ -292,29 +306,36 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         end
     end
 
-    disk_snapshot_desc = <<-EOT.unindent
-        Sets the specified VM disk to be saved in a new Image. The Image is
-        created immediately, but the contents are saved only if the VM is
-        shut down gracefully (i.e., using 'onevm shutdown' and not
-        'onevm delete')
-
-        If '--live' is specified, the Image will be saved immediately.
+    disk_saveas_desc = <<-EOT.unindent
+        Saves the specified VM disk as a new Image. The Image is
+        created immediately, and the contents of the VM disk will be saved to
+        it.
 
         States: ANY
     EOT
 
-    command :"disk-snapshot", disk_snapshot_desc, :vmid, :diskid, :img_name,
-            :options=>[TYPE, OneVMHelper::LIVE, CLONETEMPLATE] do
-        disk_id    = args[1].to_i
-        image_name = args[2]
-        image_type = options[:type] || ""
+    command :"disk-saveas", disk_saveas_desc, :vmid, :diskid, :img_name,
+            :options=>[TYPE, SNAP] do
 
-        verbose = "disk #{disk_id} prepared to be saved in " <<
-                  "the image #{image_name}"
+        disk_id     = args[1].to_i
+        image_name  = args[2]
+        image_type  = options[:type] || ""
+        snapshot_id = options[:snapshot]
+
+        if snapshot_id.nil? || snapshot_id.empty?
+            snapshot_id = -1
+
+            verbose = "disk #{disk_id} prepared to be saved in " <<
+                      "the image #{image_name}"
+        else
+            snapshot_id = snapshot_id.to_i
+
+            verbose = "disk #{disk_id} snapshot #{snapshot_id} prepared to " <<
+                      "be saved in the image #{image_name}"
+        end
 
         helper.perform_action(args[0],options,verbose) do |vm|
-            res = vm.disk_snapshot(disk_id, image_name, image_type,
-                options[:live]==true, options[:clonetemplate]==true)
+            res = vm.disk_saveas(disk_id, image_name, image_type, snapshot_id)
 
             if !OpenNebula.is_error?(res)
                 puts "Image ID: #{res}"
@@ -421,7 +442,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         deployment, in a standard installation the Scheduler is in charge
         of this decision
 
-        States: PENDING
+        States: PENDING, HOLD, STOPPED, UNDEPLOYED
     EOT
 
     command :deploy, deploy_desc, [:range,:vmid_list], :hostid, [:datastoreid,nil],
@@ -444,32 +465,18 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         States: RUNNING
     EOT
 
-    command :migrate, migrate_desc, [:range,:vmid_list], :hostid,
+    command :migrate, migrate_desc, [:range,:vmid_list], :hostid, [:datastoreid,nil],
             :options=>[ENFORCE, OneVMHelper::LIVE] do
         host_id = args[1]
         verbose = "migrating to #{host_id}"
 
+        ds_id = args[2].nil? ? -1 : args[2]
+
         helper.perform_actions(args[0],options,verbose) do |vm|
             vm.migrate( host_id,
                         options[:live]==true,
-                        options[:enforce]==true)
-        end
-    end
-
-    boot_desc = <<-EOT.unindent
-        Boots the given VM.
-
-        States: UNKNOWN, BOOT
-    EOT
-
-    command :boot, boot_desc, [:range,:vmid_list],
-        :options => [OneVMHelper::SCHEDULE] do
-        if (!options[:schedule].nil?)
-            helper.schedule_actions(args[0], options, @comm_name)
-        else
-            helper.perform_actions(args[0],options,"booting") do |vm|
-                vm.boot
-            end
+                        options[:enforce]==true,
+                        ds_id)
         end
     end
 
@@ -514,7 +521,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
     resume_desc = <<-EOT.unindent
         Resumes the execution of the a saved VM
 
-        States: STOPPED, SUSPENDED, UNDEPLOYED, POWEROFF
+        States: STOPPED, SUSPENDED, UNDEPLOYED, POWEROFF, UNKNOWN
     EOT
 
     command :resume, resume_desc, [:range,:vmid_list],
@@ -530,32 +537,40 @@ cmd=CommandParser::CmdParser.new(ARGV) do
 
     recover_desc = <<-EOT.unindent
         Recovers a stuck VM that is waiting for a driver operation. The recovery
-        may be done by failing or succeeding the pending operation. YOU NEED
+        may be done by failing, succeeding or retrying the current operation. YOU NEED
         TO MANUALLY CHECK THE VM STATUS ON THE HOST, to decide if the operation
-        was successful or not.
+        was successful or not, or if it can be retried.
 
         Example: A VM is stuck in "migrate" because of a hardware failure. You
         need to check if the VM is running in the new host or not to recover
         the vm with --success or --failure, respectively.
 
-        States: Any ACTIVE state.
+        States for success/failure recovers: Any ACTIVE state.
+        States for a retry recover: Any *FAILURE state
     EOT
 
     command :recover, recover_desc, [:range,:vmid_list],
-        :options => [SUCCESS, FAILURE] do
+        :options => [SUCCESS, FAILURE, RETRY, INTERACTIVE] do
         if !options[:success].nil?
-            result = true
+            result = 1
         elsif !options[:failure].nil?
-            result = false
+            result = 0
+        elsif !options[:retry].nil?
+            result = 2
         else
             STDERR.puts "Need to specify the result of the pending action."
             STDERR.puts "\t--success recover the VM by succeeding the missing action."
             STDERR.puts "\t--failure recover the VM by failing the missing action."
+            STDERR.puts "\t--retry recover the VM by retrying the last failed action."
             exit -1
         end
 
         helper.perform_actions(args[0], options, "recovering") do |vm|
-            vm.recover(result)
+            if options[:retry] && options[:interactive]
+                helper.recover_retry_interactive(vm)
+            else
+                vm.recover(result)
+            end
         end
     end
 
@@ -563,7 +578,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         Attaches a disk to a running VM. When using --file add only one
         DISK instance.
 
-        States: RUNNING
+        States: RUNNING, POWEROFF
     EOT
 
     command :"disk-attach", disk_attach_desc, :vmid,
@@ -605,7 +620,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
     disk_detach_desc = <<-EOT.unindent
         Detaches a disk from a running VM
 
-        States: RUNNING
+        States: RUNNING, POWEROFF
     EOT
 
     command :"disk-detach", disk_detach_desc, :vmid, :diskid do
@@ -620,7 +635,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         Attaches a NIC to a running VM. When using --file add only one
         NIC instance.
 
-        States: RUNNING
+        States: RUNNING, POWEROFF
     EOT
 
     command :"nic-attach", nic_attach_desc, :vmid,
@@ -653,7 +668,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
     nic_detach_desc = <<-EOT.unindent
         Detaches a NIC from a running VM
 
-        States: RUNNING
+        States: RUNNING, POWEROFF
     EOT
 
     command :"nic-detach", nic_detach_desc, :vmid, :nicid do
@@ -772,6 +787,45 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         end
     end
 
+    disk_snapshot_create_desc = <<-EOT.unindent
+        Takes a new snapshot of the given disk. This operation needs support
+        from the Datastore drivers: QCOW2 or Ceph.
+
+        States: POWEROFF
+    EOT
+
+    command :"disk-snapshot-create", disk_snapshot_create_desc,
+      :vmid, :diskid, :tag do
+        helper.perform_action(args[0],options,"disk snapshot created") do |o|
+          o.disk_snapshot_create(args[1].to_i, args[2])
+        end
+    end
+
+    disk_snapshot_revert_desc = <<-EOT.unindent
+        Reverts disk state to a previously taken snapshot.
+
+        States: POWEROFF
+    EOT
+
+    command :"disk-snapshot-revert", disk_snapshot_revert_desc,
+      :vmid, :diskid, :snapshot_id do
+        helper.perform_action(args[0],options,"disk snapshot reverted") do |o|
+          o.disk_snapshot_revert(args[1].to_i, args[2].to_i)
+        end
+    end
+
+    disk_snapshot_delete_desc = <<-EOT.unindent
+        Deletes a disk snapshot.
+
+        States: POWEROFF
+    EOT
+    command :"disk-snapshot-delete", disk_snapshot_delete_desc,
+      :vmid, :diskid, :snapshot_id do
+        helper.perform_action(args[0],options,"disk snapshot deleted") do |o|
+          o.disk_snapshot_delete(args[1].to_i, args[2].to_i)
+        end
+    end
+
     list_desc = <<-EOT.unindent
         Lists VMs in the pool
     EOT
@@ -834,6 +888,25 @@ cmd=CommandParser::CmdParser.new(ARGV) do
         end
     end
 
+    save_desc = <<-EOT.unindent
+        Clones the VM's source Template, replacing the disks with live snapshots
+        of the current disks. The VM capacity and NICs are also preserved
+
+        States: POWEROFF
+    EOT
+
+    command :save, save_desc, :vmid, :name do
+        helper.perform_action(args[0],options,"Saving VM") do |vm|
+            res = vm.save_as_template(args[1])
+
+            if !OpenNebula.is_error?(res)
+                puts "Template ID: #{res}"
+            end
+
+            res
+        end
+    end
+
     # Deprecated commands
 
     deprecated_command(:attachdisk, 'disk-attach')
@@ -842,6 +915,7 @@ cmd=CommandParser::CmdParser.new(ARGV) do
     deprecated_command(:livemigrate, 'migrate --live')
     deprecated_command(:cancel, 'shutdown --hard')
     deprecated_command(:reset, 'reboot --hard')
-    deprecated_command(:restart, 'boot')
+    deprecated_command(:restart, 'recover --retry')
+    deprecated_command(:boot, 'recover --retry')
     deprecated_command(:resubmit, 'delete --recreate')
 end

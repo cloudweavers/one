@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,6 +14,14 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
+if !ONE_LOCATION
+    LOG_LOCATION = "/var/log/one"
+else
+    LOG_LOCATION = ONE_LOCATION + "/var"
+end
+
+LOG              = LOG_LOCATION + "/onedb-fsck.log"
+
 require "rexml/document"
 include REXML
 require 'ipaddr'
@@ -22,8 +30,8 @@ require 'set'
 require 'nokogiri'
 
 module OneDBFsck
-    VERSION = "4.6.0"
-    LOCAL_VERSION = "4.11.80"
+    VERSION = "4.11.80"
+    LOCAL_VERSION = "4.13.80"
 
     def check_db_version()
         db_version = read_db_version()
@@ -50,6 +58,10 @@ EOT
     end
 
     IMAGE_STATES=%w{INIT READY USED DISABLED LOCKED ERROR CLONE DELETE USED_PERS}
+
+    VM_BIN  = 0x0000001000000000
+    NET_BIN = 0x0000004000000000
+    HOLD    = 0xFFFFFFFF
 
     def fsck
 
@@ -134,9 +146,10 @@ EOT
 
         tables = ["group_pool", "user_pool", "acl", "image_pool", "host_pool",
             "network_pool", "template_pool", "vm_pool", "cluster_pool",
-            "datastore_pool", "document_pool", "zone_pool", "secgroup_pool"]
+            "datastore_pool", "document_pool", "zone_pool", "secgroup_pool",
+            "vdc_pool"]
 
-        federated_tables = ["group_pool", "user_pool", "acl", "zone_pool"]
+        federated_tables = ["group_pool", "user_pool", "acl", "zone_pool", "vdc_pool"]
 
         tables.each do |table|
             max_oid = -1
@@ -201,7 +214,7 @@ EOT
         users_fix = {}
 
         @db.fetch("SELECT oid,body,gid FROM user_pool") do |row|
-            doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+            doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
             gid = doc.root.at_xpath('GID').text.to_i
             user_gid = gid
@@ -289,7 +302,7 @@ EOT
         @db.transaction do
             @db.fetch("SELECT * from group_pool") do |row|
                 gid = row[:oid]
-                doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+                doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
                 users_elem = doc.root.at_xpath("USERS")
                 users_elem.remove if !users_elem.nil?
@@ -755,11 +768,17 @@ EOT
 
         # Init vnet counters
         @db.fetch("SELECT oid,body FROM network_pool") do |row|
-            doc = Document.new(row[:body])
+            doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
+
+            ar_leases = {}
+
+            doc.root.xpath("AR_POOL/AR/AR_ID").each do |ar_id|
+                ar_leases[ar_id.text.to_i] = {}
+            end
 
             counters[:vnet][row[:oid]] = {
-                :type           => doc.root.get_text('TYPE').to_s.to_i,
-                :ar_leases      => {}
+                :ar_leases      => ar_leases,
+                :no_ar_leases   => {}
             }
         end
 
@@ -769,7 +788,7 @@ EOT
 
         # Aggregate information of the RUNNING vms
         @db.fetch("SELECT oid,body FROM vm_pool WHERE state<>6") do |row|
-            vm_doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+            vm_doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
             state     = vm_doc.root.at_xpath('STATE').text.to_i
             lcm_state = vm_doc.root.at_xpath('LCM_STATE').text.to_i            
@@ -787,9 +806,9 @@ EOT
             end
 
             # VNets used by this VM
-            vm_doc.root.xpath("TEMPLATE/NIC").each do |e|
+            vm_doc.root.xpath("TEMPLATE/NIC").each do |nic|
                 net_id = nil
-                e.xpath("NETWORK_ID").each do |nid|
+                nic.xpath("NETWORK_ID").each do |nid|
                     net_id = nid.text.to_i
                 end
 
@@ -798,20 +817,43 @@ EOT
                         log_error("VM #{row[:oid]} is using VNet #{net_id}, "<<
                             "but it does not exist")
                     else
-=begin
-                        ar_id_e = e.at_xpath('AR_ID')
-                        ar_id = ar_id_e.nil? ? -1 : ar_id_e.text.to_i
+                        mac = nic.at_xpath("MAC").nil? ? nil : nic.at_xpath("MAC").text
 
-                        if counters[:vnet][net_id][:ar_leases][ar_id].nil?
-                            counters[:vnet][net_id][:ar_leases][ar_id] = []
+                        ar_id_e = nic.at_xpath('AR_ID')
+
+                        if ar_id_e.nil?
+                            if !counters[:vnet][net_id][:no_ar_leases][mac_s_to_i(mac)].nil?
+                                log_error("VNet has more than one VM with the same MAC address (#{mac}). "<<
+                                    "FSCK can't handle this, and consistency is not guaranteed")
+                            end
+
+                            counters[:vnet][net_id][:no_ar_leases][mac_s_to_i(mac)] = {
+                                :ip         => nic.at_xpath("IP").nil? ? nil : nic.at_xpath("IP").text,
+                                :ip6_global => nic.at_xpath("IP6_GLOBAL").nil? ? nil : nic.at_xpath("IP6_GLOBAL").text,
+                                :ip6_link   => nic.at_xpath("IP6_LINK").nil? ? nil : nic.at_xpath("IP6_LINK").text,
+                                :ip6_ula    => nic.at_xpath("IP6_ULA").nil? ? nil : nic.at_xpath("IP6_ULA").text,
+                                :mac        => mac,
+                                :vm         => row[:oid],
+                                :vnet       => nil
+                            }
+                        else
+                            ar_id = ar_id_e.text.to_i
+
+                            if counters[:vnet][net_id][:ar_leases][ar_id].nil?
+                                log_error("VM #{row[:oid]} is using VNet #{net_id}, AR #{ar_id}, "<<
+                                    "but the AR does not exist")
+                            else
+                                counters[:vnet][net_id][:ar_leases][ar_id][mac_s_to_i(mac)] = {
+                                    :ip         => nic.at_xpath("IP").nil? ? nil : nic.at_xpath("IP").text,
+                                    :ip6_global => nic.at_xpath("IP6_GLOBAL").nil? ? nil : nic.at_xpath("IP6_GLOBAL").text,
+                                    :ip6_link   => nic.at_xpath("IP6_LINK").nil? ? nil : nic.at_xpath("IP6_LINK").text,
+                                    :ip6_ula    => nic.at_xpath("IP6_ULA").nil? ? nil : nic.at_xpath("IP6_ULA").text,
+                                    :mac        => mac,
+                                    :vm         => row[:oid],
+                                    :vnet       => nil
+                                }
+                            end
                         end
-
-                        counters[:vnet][net_id][:ar_leases][ar_id] <<
-                            [
-                                e.at_xpath('MAC').text,                 # MAC
-                                vm_doc.root.at_xpath('ID').text.to_i    # VID
-                            ]
-=end
                     end
                 end
             end
@@ -1103,6 +1145,372 @@ EOT
         log_time()
 
         ########################################################################
+        # VNet
+        #
+        # LEASES
+        ########################################################################
+
+        @db.fetch("SELECT oid,body,pid FROM network_pool WHERE pid<>-1") do |row|
+            doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
+
+            parent_vnet = doc.root.at_xpath("PARENT_NETWORK_ID").text.to_i
+
+            if (row[:pid] != parent_vnet)
+                # TODO
+            end
+
+            doc.root.xpath("AR_POOL/AR").each do |ar|
+                parent_ar_e = ar.at_xpath("PARENT_NETWORK_AR_ID")
+                if !(parent_ar_e.nil? || parent_ar_e.text == "")
+
+                    parent_ar = parent_ar_e.text.to_i
+
+                    if counters[:vnet][parent_vnet][:ar_leases][parent_ar].nil?
+                        log_error(
+                            "VNet #{row[:oid]} is using parent "<<
+                            "VNet #{parent_vnet}, AR #{parent_ar}, "<<
+                            "but the AR does not exist")
+                    end
+
+                    # MAC
+                    first_mac = mac_s_to_i(ar.at_xpath("MAC").text)
+
+                    # IP
+                    first_ip = nil
+                    if (!ar.at_xpath("IP").nil?)
+                        first_ip = IPAddr.new(ar.at_xpath("IP").text, Socket::AF_INET)
+                    end
+
+                    # IP6
+                    global_prefix = nil
+                    if !ar.at_xpath("GLOBAL_PREFIX").nil?
+                        global_prefix = ip6_prefix_s_to_i(
+                                    ar.at_xpath("GLOBAL_PREFIX").text)
+                    end
+
+                    ula_prefix = nil
+                    if !ar.at_xpath("ULA_PREFIX").nil?
+                        ula_prefix = ip6_prefix_s_to_i(
+                                    ar.at_xpath("ULA_PREFIX").text)
+                    end
+
+                    link_prefix = nil
+                    type = ar.at_xpath("TYPE").text
+                    if ( type == "IP6" || type == "IP4_6" )
+                        link_prefix = 0xfe80000000000000
+                    end
+
+                    # Parent vnet has a lease for each address of this reservation
+                    ar.at_xpath("SIZE").text.to_i.times do |index|
+
+                        lease = {
+                            :ip         => nil,
+                            :ip6_global => nil,
+                            :ip6_link   => nil,
+                            :ip6_ula    => nil,
+                            :mac        => nil,
+                            :vm         => nil,
+                            :vnet       => row[:oid]
+                        }
+
+                        #MAC
+                        mac = (first_mac & 0xFFFF00000000) +
+                              (((first_mac & 0xFFFFFFFF) + index) % 0x100000000)
+                        lease[:mac] = mac_i_to_s(mac)
+
+                        # IP
+                        if (!first_ip.nil?)
+                            lease[:ip] = IPAddr.new(first_ip.to_i + index,
+                                                    Socket::AF_INET).to_s
+                        end
+
+                        # IP6
+                        ip6_suffix = mac_to_ip6_suffix(mac)
+
+                        if (!global_prefix.nil?)
+                            lease[:ip6_global] = IPAddr.new(
+                                (global_prefix << 64) | ip6_suffix,
+                                Socket::AF_INET6 ).to_s
+                        end
+
+                        if (!ula_prefix.nil?)
+                            lease[:ip6_ula] = IPAddr.new(
+                                (ula_prefix << 64) | ip6_suffix,
+                                Socket::AF_INET6 ).to_s
+                        end
+
+                        if (!link_prefix.nil?)
+                            lease[:ip6_link] = IPAddr.new(
+                                (link_prefix << 64) | ip6_suffix,
+                                Socket::AF_INET6 ).to_s
+                        end
+
+                        counters[:vnet][parent_vnet][
+                            :ar_leases][parent_ar][mac] = lease
+                    end
+                end
+            end
+        end
+
+
+        # Create a new empty table where we will store the new calculated values
+        @db.run "CREATE TABLE network_pool_new (oid INTEGER PRIMARY KEY, name VARCHAR(128), body MEDIUMTEXT, uid INTEGER, gid INTEGER, owner_u INTEGER, group_u INTEGER, other_u INTEGER, cid INTEGER, pid INTEGER, UNIQUE(name,uid));"
+
+        @db.transaction do
+        @db[:network_pool].each do |row|
+            doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
+            oid = row[:oid]
+
+            used_leases = doc.root.at_xpath("USED_LEASES").text.to_i
+            new_used_leases = 0
+
+            counter_no_ar = counters[:vnet][row[:oid]][:no_ar_leases]
+
+            counters[:vnet][row[:oid]][:ar_leases].each do |ar_id, counter_ar|
+                net_ar = doc.root.at_xpath("AR_POOL/AR[AR_ID=#{ar_id}]")
+
+                if (net_ar.nil?)
+                    # TODO shouldn't happen?
+                end
+
+                # MAC
+                first_mac = mac_s_to_i(net_ar.at_xpath("MAC").text)
+
+                # IP
+                first_ip = nil
+                if !net_ar.at_xpath("IP").nil?
+                    first_ip = IPAddr.new(net_ar.at_xpath("IP").text, Socket::AF_INET)
+                end
+
+                # IP6
+                global_prefix = nil
+                if !net_ar.at_xpath("GLOBAL_PREFIX").nil?
+                    global_prefix = ip6_prefix_s_to_i(
+                                net_ar.at_xpath("GLOBAL_PREFIX").text)
+                end
+
+                ula_prefix = nil
+                if !net_ar.at_xpath("ULA_PREFIX").nil?
+                    ula_prefix = ip6_prefix_s_to_i(
+                                net_ar.at_xpath("ULA_PREFIX").text)
+                end
+
+                link_prefix = nil
+                type = net_ar.at_xpath("TYPE").text
+                if ( type == "IP6" || type == "IP4_6" )
+                    link_prefix = 0xfe80000000000000
+                end
+
+                # Allocated leases
+                allocated_e = net_ar.at_xpath("ALLOCATED")
+
+                allocated = allocated_e.nil? ? "" : allocated_e.text
+
+                leases = allocated.scan(/(\d+) (\d+)/)
+
+                new_leases = []
+
+                leases.each do |lease_str|
+                    index = lease_str[0].to_i
+                    binary_magic = lease_str[1].to_i
+
+                    lease = {
+                        :ip         => nil,
+                        :ip6_global => nil,
+                        :ip6_link   => nil,
+                        :ip6_ula    => nil,
+                        :mac        => nil,
+                        :vm         => nil,
+                        :vnet       => nil
+                    }
+
+                    # MAC
+                    mac = (first_mac & 0xFFFF00000000) +
+                          (((first_mac & 0xFFFFFFFF) + index) % 0x100000000)
+
+                    lease[:mac] = mac_i_to_s(mac)
+
+                    # IP
+                    if (!first_ip.nil?)
+                        lease[:ip] = IPAddr.new(first_ip.to_i + index,
+                                                Socket::AF_INET).to_s
+                    end
+
+                    # IP6
+                    ip6_suffix = mac_to_ip6_suffix(mac)
+
+                    if (!global_prefix.nil?)
+                        lease[:ip6_global] = IPAddr.new(
+                            (global_prefix << 64) | ip6_suffix,
+                            Socket::AF_INET6 ).to_s
+                    end
+
+                    if (!ula_prefix.nil?)
+                        lease[:ip6_ula] = IPAddr.new(
+                            (ula_prefix << 64) | ip6_suffix,
+                            Socket::AF_INET6 ).to_s
+                    end
+
+                    if (!link_prefix.nil?)
+                        lease[:ip6_link] = IPAddr.new(
+                            (link_prefix << 64) | ip6_suffix,
+                            Socket::AF_INET6 ).to_s
+                    end
+
+                    # OID
+                    lease_oid = binary_magic & 0x00000000FFFFFFFF
+                    lease_obj = ""
+
+                    if (binary_magic & VM_BIN != 0)
+                        lease[:vm] = lease_oid
+                        lease_obj = "VM"
+                    else # binary_magic & NET_BIN != 0
+                        lease[:vnet] = lease_oid
+                        lease_obj = "VNet"
+                    end
+
+                    counter_lease = counter_ar[mac]
+                    counter_ar.delete(mac)
+
+                    if counter_lease.nil?
+                        counter_lease = counter_no_ar[mac]
+                        counter_no_ar.delete(mac)
+                    end
+
+                    if counter_lease.nil?
+                        if(lease[:vm] != HOLD)
+                            log_error(
+                            "VNet #{oid} AR #{ar_id} has leased #{lease_to_s(lease)} "<<
+                            "to #{lease_obj} #{lease_oid}, but it is actually free")
+                        else
+                            new_leases << lease_str
+                        end
+                    else
+                        if counter_lease != lease
+
+                            # Things that can be fixed
+                            if (counter_lease[:vm] != lease[:vm] ||
+                                counter_lease[:vnet] != lease[:vnet])
+
+                                new_lease_obj = ""
+                                new_lease_oid = 0
+                                new_binary_magic = 0
+
+                                if !counter_lease[:vm].nil?
+                                    new_lease_obj = "VM"
+                                    new_lease_oid = counter_lease[:vm].to_i
+
+                                    new_binary_magic = (VM_BIN |
+                                        (new_lease_oid & 0xFFFFFFFF))
+                                else
+                                    new_lease_obj = "VNet"
+                                    new_lease_oid = counter_lease[:vnet].to_i
+
+                                    new_binary_magic = (NET_BIN |
+                                        (new_lease_oid & 0xFFFFFFFF))
+                                end
+
+                                if (lease[:vm] == HOLD)
+                                    log_error(
+                                        "VNet #{oid} AR #{ar_id} has lease "<<
+                                        "#{lease_to_s(lease)} on hold, but it is "<<
+                                        "actually used by "<<
+                                        "#{new_lease_obj} #{new_lease_oid}")
+                                else
+                                    log_error(
+                                        "VNet #{oid} AR #{ar_id} has leased #{lease_to_s(lease)} "<<
+                                        "to #{lease_obj} #{lease_oid}, but it is "<<
+                                        "actually used by "<<
+                                        "#{new_lease_obj} #{new_lease_oid}")
+                                end
+
+                                lease_str[1] = new_binary_magic.to_s
+                            end
+
+                            # Things that can't be fixed
+
+                            [:ip, :ip6_global, :ip6_link, :ip6_ula].each do |key|
+                                if (counter_lease[key] != lease[key])
+                                    log_error(
+                                    "VNet #{oid} AR #{ar_id} has a wrong "<<
+                                    "lease for "<<
+                                    "#{lease_obj} #{lease_oid}. #{key.to_s.upcase} "<<
+                                    "does not match: "<<
+                                    "#{counter_lease[key]} != #{lease[key]}. "<<
+                                    "This can't be fixed")
+                                end
+                            end
+                        end
+
+                        new_leases << lease_str
+                    end
+                end
+
+                counter_ar.each do |mac, counter_lease|
+                    index = ((mac & 0xFFFFFFFF) - (first_mac & 0xFFFFFFFF) ) % 0x100000000
+
+                    new_lease_obj = ""
+                    new_lease_oid = 0
+                    new_binary_magic = 0
+
+                    if !counter_lease[:vm].nil?
+                        new_lease_obj = "VM"
+                        new_lease_oid = counter_lease[:vm].to_i
+
+                        new_binary_magic = (VM_BIN |
+                            (new_lease_oid & 0xFFFFFFFF))
+                    else
+                        new_lease_obj = "VNet"
+                        new_lease_oid = counter_lease[:vnet].to_i
+
+                        new_binary_magic = (NET_BIN |
+                            (new_lease_oid & 0xFFFFFFFF))
+                    end
+
+                    log_error("VNet #{oid} AR #{ar_id} does not have a lease "<<
+                        "for #{mac_i_to_s(mac)}, but it is in use by "<<
+                        "#{new_lease_obj} #{new_lease_oid}")
+
+                    new_leases << [index.to_s, new_binary_magic.to_s]
+                end
+
+                new_used_leases += new_leases.size
+
+                if new_leases.size > 0
+                    allocated_e.content = " #{new_leases.join(" ")}"
+                else
+                    allocated_e.remove if !allocated_e.nil?
+                end
+            end
+
+            if (new_used_leases != used_leases)
+                log_error("VNet #{oid} has #{used_leases} used leases, "<<
+                "but it is actually #{new_used_leases}")
+
+                doc.root.at_xpath("USED_LEASES").content =
+                                                new_used_leases.to_s
+            end
+
+            counter_no_ar.each do |mac, counter_lease|
+                log_error("VM #{counter_lease[:vm]} has a lease from "<<
+                    "VNet #{oid}, but it could not be matched to any AR")
+            end
+
+            row[:body] = doc.root.to_s
+
+            # commit
+            @db[:network_pool_new].insert(row)
+        end
+        end
+
+        # Rename table
+        @db.run("DROP TABLE network_pool")
+        @db.run("ALTER TABLE network_pool_new RENAME TO network_pool")
+
+        log_time()
+
+
+        ########################################################################
         # Users
         #
         # USER QUOTAS
@@ -1136,7 +1544,7 @@ EOT
             end
 
             @db.fetch("SELECT * FROM old_user_quotas WHERE user_oid>0") do |row|
-                doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+                doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
                 calculate_quotas(doc, "uid=#{row[:user_oid]}", "User")
 
@@ -1184,7 +1592,7 @@ EOT
             end
 
             @db.fetch("SELECT * FROM old_group_quotas WHERE group_oid>0") do |row|
-                doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+                doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
                 calculate_quotas(doc, "gid=#{row[:group_oid]}", "Group")
 
@@ -1205,12 +1613,23 @@ EOT
 
     def log_error(message)
         @errors += 1
+
+        log_msg(message)
+    end
+
+    def log_msg(message)
+        @log_file ||= File.open(LOG, "w")
+
         puts message
+
+        @log_file.puts(message)
+        @log_file.flush
     end
 
     def log_total_errors()
         puts
-        puts "Total errors found: #{@errors}"
+        log_msg "Total errors found: #{@errors}"
+        puts "A copy of this output was stored in #{LOG}"
     end
 
 
@@ -1232,7 +1651,7 @@ EOT
         img_usage = {}
 
         @db.fetch("SELECT body FROM vm_pool WHERE #{where_filter} AND state<>6") do |vm_row|
-            vmdoc = Nokogiri::XML(vm_row[:body]){|c| c.default_xml.noblanks}
+            vmdoc = Nokogiri::XML(vm_row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
             # VM quotas
             vmdoc.root.xpath("TEMPLATE/CPU").each { |e|
@@ -1417,7 +1836,7 @@ EOT
         ds_usage = {}
 
         @db.fetch("SELECT body FROM image_pool WHERE #{where_filter}") do |img_row|
-            img_doc = Nokogiri::XML(img_row[:body]){|c| c.default_xml.noblanks}
+            img_doc = Nokogiri::XML(img_row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
             img_doc.root.xpath("DATASTORE_ID").each { |e|
                 ds_usage[e.text] = [0,0] if ds_usage[e.text].nil?
@@ -1476,4 +1895,41 @@ EOT
             new_elem.add_child(doc.create_element("SIZE_USED")).content = size_used.to_s
         }
     end
+
+    def mac_s_to_i(mac)
+        return mac.split(":").map {|e|
+            e.to_i(16).to_s(16).rjust(2,"0")}.join("").to_i(16)
+    end
+
+    def mac_i_to_s(mac)
+        mac_s = mac.to_s(16).rjust(12, "0")
+        return "#{mac_s[0..1]}:#{mac_s[2..3]}:#{mac_s[4..5]}:"<<
+               "#{mac_s[6..7]}:#{mac_s[8..9]}:#{mac_s[10..11]}"
+    end
+
+    def ip6_prefix_s_to_i(prefix)
+        return prefix.split(":", 4).map {|e|
+            e.to_i(16).to_s(16).rjust(4, "0")}.join("").to_i(16)
+    end
+
+    # Copied from AddressRange::set_ip6 in AddressRange.cc
+    def mac_to_ip6_suffix(mac_i)
+        mac = [
+            mac_i & 0x00000000FFFFFFFF,
+            (mac_i & 0xFFFFFFFF00000000) >> 32
+        ]
+
+        mlow = mac[0]
+        eui64 = [
+            4261412864 + (mlow & 0x00FFFFFF),
+            ((mac[1]+512)<<16) + ((mlow & 0xFF000000)>>16) + 0x000000FF
+        ]
+
+        return (eui64[1] << 32) + eui64[0]
+    end
+
+    def lease_to_s(lease)
+        return lease[:ip].nil? ? lease[:mac].to_s : lease[:ip].to_s
+    end
+
 end

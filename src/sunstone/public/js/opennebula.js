@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -116,41 +116,115 @@ var OpenNebula = {
                                "POWEROFF",
                                "UNDEPLOYED"][value]);
                     break;
+                case "SHORT_VM_LCM":
+                case "short_vm_lcm":
+                    state = tr(["LCM_INIT", // LCM_INIT
+                               "PROLOG",    // PROLOG
+                               "BOOT",      // BOOT
+                               "RUNNING",   // RUNNING
+                               "MIGRATE",   // MIGRATE
+                               "SAVE",      // SAVE_STOP
+                               "SAVE",      // SAVE_SUSPEND
+                               "SAVE",      // SAVE_MIGRATE
+                               "MIGRATE",   // PROLOG_MIGRATE
+                               "PROLOG",    // PROLOG_RESUME
+                               "EPILOG",    // EPILOG_STOP
+                               "EPILOG",    // EPILOG
+                               "SHUTDOWN",  // SHUTDOWN
+                               "SHUTDOWN",  // CANCEL
+                               "FAILURE",   // FAILURE
+                               "CLEANUP",   // CLEANUP_RESUBMIT
+                               "UNKNOWN",   // UNKNOWN
+                               "HOTPLUG",   // HOTPLUG
+                               "SHUTDOWN",  // SHUTDOWN_POWEROFF
+                               "BOOT",      // BOOT_UNKNOWN
+                               "BOOT",      // BOOT_POWEROFF
+                               "BOOT",      // BOOT_SUSPENDED
+                               "BOOT",      // BOOT_STOPPED
+                               "CLEANUP",   // CLEANUP_DELETE
+                               "SNAPSHOT",  // HOTPLUG_SNAPSHOT
+                               "HOTPLUG",   // HOTPLUG_NIC
+                               "HOTPLUG",   // HOTPLUG_SAVEAS
+                               "HOTPLUG",   // HOTPLUG_SAVEAS_POWEROFF
+                               "HOTPLUG",   // HOTPLUG_SAVEAS_SUSPENDED
+                               "SHUTDOWN",  // SHUTDOWN_UNDEPLOY
+                               "EPILOG",    // EPILOG_UNDEPLOY
+                               "PROLOG",    // PROLOG_UNDEPLOY
+                               "BOOT",      // BOOT_UNDEPLOY
+                               "HOTPLUG",   // HOTPLUG_PROLOG_POWEROFF
+                               "HOTPLUG",   // HOTPLUG_EPILOG_POWEROFF
+                               "BOOT",      // BOOT_MIGRATE
+                               "FAILURE",   // BOOT_FAILURE
+                               "FAILURE",   // BOOT_MIGRATE_FAILURE
+                               "FAILURE",   // PROLOG_MIGRATE_FAILURE
+                               "FAILURE",   // PROLOG_FAILURE
+                               "FAILURE",   // EPILOG_FAILURE
+                               "FAILURE",   // EPILOG_STOP_FAILURE
+                               "FAILURE",   // EPILOG_UNDEPLOY_FAILURE
+                               "MIGRATE",   // PROLOG_MIGRATE_POWEROFF
+                               "FAILURE",   // PROLOG_MIGRATE_POWEROFF_FAILURE
+                               "MIGRATE",   // PROLOG_MIGRATE_SUSPEND
+                               "FAILURE",   // PROLOG_MIGRATE_SUSPEND_FAILURE
+                               "FAILURE",   // BOOT_UNDEPLOY_FAILURE
+                               "FAILURE",   // BOOT_STOPPED_FAILURE
+                               "FAILURE",   // PROLOG_RESUME_FAILURE
+                               "FAILURE"    // PROLOG_UNDEPLOY_FAILURE
+                            ][value]);
+                    break;
                 case "VM_LCM":
                 case "vm_lcm":
                     state = tr(["LCM_INIT",
-                               "PROLOG",
-                               "BOOT",
-                               "RUNNING",
-                               "MIGRATE",
-                               "SAVE",
-                               "SAVE",
-                               "SAVE",
-                               "MIGRATE",
-                               "PROLOG",
-                               "EPILOG",
-                               "EPILOG",
-                               "SHUTDOWN",
-                               "SHUTDOWN",
-                               "FAILURE",
-                               "CLEANUP",
-                               "UNKNOWN",
-                               "HOTPLUG",
-                               "SHUTDOWN",
-                               "BOOT",
-                               "BOOT",
-                               "BOOT",
-                               "BOOT",
-                               "CLEANUP",
-                               "SNAPSHOT",
-                               "HOTPLUG",
-                               "HOTPLUG",
-                               "HOTPLUG",
-                               "HOTPLUG",
-                               "SHUTDOWN",
-                               "EPILOG",
-                               "PROLOG",
-                               "BOOT"][value]);
+                                "PROLOG",
+                                "BOOT",
+                                "RUNNING",
+                                "MIGRATE",
+                                "SAVE_STOP",
+                                "SAVE_SUSPEND",
+                                "SAVE_MIGRATE",
+                                "PROLOG_MIGRATE",
+                                "PROLOG_RESUME",
+                                "EPILOG_STOP",
+                                "EPILOG",
+                                "SHUTDOWN",
+                                "CANCEL",
+                                "FAILURE",
+                                "CLEANUP_RESUBMIT",
+                                "UNKNOWN",
+                                "HOTPLUG",
+                                "SHUTDOWN_POWEROFF",
+                                "BOOT_UNKNOWN",
+                                "BOOT_POWEROFF",
+                                "BOOT_SUSPENDED",
+                                "BOOT_STOPPED",
+                                "CLEANUP_DELETE",
+                                "HOTPLUG_SNAPSHOT",
+                                "HOTPLUG_NIC",
+                                "HOTPLUG_SAVEAS",
+                                "HOTPLUG_SAVEAS_POWEROFF",
+                                "HOTPLUG_SAVEAS_SUSPENDED",
+                                "SHUTDOWN_UNDEPLOY",
+                                "EPILOG_UNDEPLOY",
+                                "PROLOG_UNDEPLOY",
+                                "BOOT_UNDEPLOY",
+                                "HOTPLUG_PROLOG_POWEROFF",
+                                "HOTPLUG_EPILOG_POWEROFF",
+                                "BOOT_MIGRATE",
+                                "BOOT_FAILURE",
+                                "BOOT_MIGRATE_FAILURE",
+                                "PROLOG_MIGRATE_FAILURE",
+                                "PROLOG_FAILURE",
+                                "EPILOG_FAILURE",
+                                "EPILOG_STOP_FAILURE",
+                                "EPILOG_UNDEPLOY_FAILURE",
+                                "PROLOG_MIGRATE_POWEROFF",
+                                "PROLOG_MIGRATE_POWEROFF_FAILURE",
+                                "PROLOG_MIGRATE_SUSPEND",
+                                "PROLOG_MIGRATE_SUSPEND_FAILURE",
+                                "BOOT_UNDEPLOY_FAILURE",
+                                "BOOT_STOPPED_FAILURE",
+                                "PROLOG_RESUME_FAILURE",
+                                "PROLOG_UNDEPLOY_FAILURE"
+                            ][value]);
                     break;
                 case "IMAGE":
                 case "image":
@@ -163,6 +237,11 @@ var OpenNebula = {
                                "CLONE",
                                "DELETE",
                                "USED_PERS"][value]);
+                    break;
+                case "DATASTORE":
+                case "datastore":
+                    state = tr(["ON",
+                               "OFF"][value]);
                     break;
                 case "VM_MIGRATE_REASON":
                 case "vm_migrate_reason":
@@ -192,7 +271,11 @@ var OpenNebula = {
                                 "resched",
                                 "unresched",
                                 "poweroff",
-                                "poweroff-hard"][value]);
+                                "poweroff-hard",
+                                "disk-attach",
+                                "disk-detach",
+                                "nic-attach",
+                                "nic-detach"][value]);
                     break;
                 default:
                     return value;
@@ -744,6 +827,9 @@ var OpenNebula = {
         "list": function(params){
             OpenNebula.Action.list(params,OpenNebula.Host.resource);
         },
+        "list_in_zone" : function(params){
+            OpenNebula.Action.list_in_zone(params,OpenNebula.Host.resource);
+        },
         "show": function(params){
             OpenNebula.Action.show(params,OpenNebula.Host.resource);
         },
@@ -789,6 +875,9 @@ var OpenNebula = {
         },
         "list": function(params){
             OpenNebula.Action.list(params,OpenNebula.Network.resource);
+        },
+        "list_in_zone" : function(params){
+            OpenNebula.Action.list_in_zone(params,OpenNebula.Network.resource);
         },
         "show": function(params){
             OpenNebula.Action.show(params,OpenNebula.Network.resource);
@@ -876,6 +965,71 @@ var OpenNebula = {
     "VM": {
         "resource": "VM",
 
+        "state": {
+            "INIT"      : 0,
+            "PENDING"   : 1,
+            "HOLD"      : 2,
+            "ACTIVE"    : 3,
+            "STOPPED"   : 4,
+            "SUSPENDED" : 5,
+            "DONE"      : 6,
+            "FAILED"    : 7,
+            "POWEROFF"  : 8,
+            "UNDEPLOYED": 9
+        },
+
+        "lcm_state": {
+            "LCM_INIT"            : 0,
+            "PROLOG"              : 1,
+            "BOOT"                : 2,
+            "RUNNING"             : 3,
+            "MIGRATE"             : 4,
+            "SAVE_STOP"           : 5,
+            "SAVE_SUSPEND"        : 6,
+            "SAVE_MIGRATE"        : 7,
+            "PROLOG_MIGRATE"      : 8,
+            "PROLOG_RESUME"       : 9,
+            "EPILOG_STOP"         : 10,
+            "EPILOG"              : 11,
+            "SHUTDOWN"            : 12,
+            "CANCEL"              : 13,
+            "FAILURE"             : 14,
+            "CLEANUP_RESUBMIT"    : 15,
+            "UNKNOWN"             : 16,
+            "HOTPLUG"             : 17,
+            "SHUTDOWN_POWEROFF"   : 18,
+            "BOOT_UNKNOWN"        : 19,
+            "BOOT_POWEROFF"       : 20,
+            "BOOT_SUSPENDED"      : 21,
+            "BOOT_STOPPED"        : 22,
+            "CLEANUP_DELETE"      : 23,
+            "HOTPLUG_SNAPSHOT"    : 24,
+            "HOTPLUG_NIC"         : 25,
+            "HOTPLUG_SAVEAS"           : 26,
+            "HOTPLUG_SAVEAS_POWEROFF"  : 27,
+            "HOTPLUG_SAVEAS_SUSPENDED" : 28,
+            "SHUTDOWN_UNDEPLOY"   : 29,
+            "EPILOG_UNDEPLOY"     : 30,
+            "PROLOG_UNDEPLOY"     : 31,
+            "BOOT_UNDEPLOY"       : 32,
+            "HOTPLUG_PROLOG_POWEROFF"   : 33,
+            "HOTPLUG_EPILOG_POWEROFF"   : 34,
+            "BOOT_MIGRATE"              : 35,
+            "BOOT_FAILURE"              : 36,
+            "BOOT_MIGRATE_FAILURE"      : 37,
+            "PROLOG_MIGRATE_FAILURE"    : 38,
+            "PROLOG_FAILURE"            : 39,
+            "EPILOG_FAILURE"            : 40,
+            "EPILOG_STOP_FAILURE"       : 41,
+            "EPILOG_UNDEPLOY_FAILURE"   : 42,
+            "PROLOG_MIGRATE_POWEROFF"   : 43,
+            "PROLOG_MIGRATE_POWEROFF_FAILURE"   : 44,
+            "PROLOG_MIGRATE_SUSPEND"            : 45,
+            "PROLOG_MIGRATE_SUSPEND_FAILURE"    : 46,
+            "BOOT_UNDEPLOY_FAILURE"     : 47,
+            "BOOT_STOPPED_FAILURE"      : 48
+        },
+
         "create": function(params){
             OpenNebula.Action.create(params,OpenNebula.VM.resource);
         },
@@ -921,9 +1075,6 @@ var OpenNebula = {
         },
         "resume": function(params){
             OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,"resume");
-        },
-        "restart": function(params){
-            OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,"restart");
         },
         "resubmit": function(params){
             OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,"resubmit");
@@ -973,6 +1124,11 @@ var OpenNebula = {
             var action_obj = params.data.extra_param;
             OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,
                                             "saveas",action_obj);
+        },
+        "disk_snapshot_cancel": function(params){
+            var action_obj = {"disk_id": params.data.extra_param};
+            OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,
+                                            "disk_snapshot_cancel",action_obj);
         },
         "snapshot_create": function(params){
             var action_obj = params.data.extra_param;
@@ -1066,7 +1222,7 @@ var OpenNebula = {
             OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,"unresched");
         },
         "recover" : function(params){
-            var action_obj = {"with": params.data.extra_param};
+            var action_obj = {"result": params.data.extra_param};
             OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,"recover",action_obj);
         },
         "accounting": function(params){
@@ -1074,7 +1230,12 @@ var OpenNebula = {
         },
         "showback": function(params){
             OpenNebula.Action.showback(params,OpenNebula.VM.resource);
-        }
+        },
+        "save_as_template": function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.VM.resource,
+                                            "save_as_template",action_obj);
+        },
     },
 
     "Group": {
@@ -1136,13 +1297,13 @@ var OpenNebula = {
         "accounting" : function(params){
             OpenNebula.Action.monitor(params,OpenNebula.Group.resource,false);
         },
-        "add_provider" : function(params){
+        "add_admin" : function(params){
             var action_obj = params.data.extra_param;
-            OpenNebula.Action.simple_action(params,OpenNebula.Group.resource,"add_provider",action_obj);
+            OpenNebula.Action.simple_action(params,OpenNebula.Group.resource,"add_admin",action_obj);
         },
-        "del_provider" : function(params){
+        "del_admin" : function(params){
             var action_obj = params.data.extra_param;
-            OpenNebula.Action.simple_action(params,OpenNebula.Group.resource,"del_provider",action_obj);
+            OpenNebula.Action.simple_action(params,OpenNebula.Group.resource,"del_admin",action_obj);
         }
     },
 
@@ -1459,6 +1620,9 @@ var OpenNebula = {
         "list" : function(params){
             OpenNebula.Action.list(params,OpenNebula.Datastore.resource);
         },
+        "list_in_zone" : function(params){
+            OpenNebula.Action.list_in_zone(params,OpenNebula.Datastore.resource);
+        },
         "show" : function(params){
             OpenNebula.Action.show(params,OpenNebula.Datastore.resource);
         },
@@ -1491,6 +1655,12 @@ var OpenNebula = {
                                             OpenNebula.Datastore.resource,
                                             "rename",
                                             action_obj);
+        },
+        "enable": function(params){
+            OpenNebula.Action.simple_action(params,OpenNebula.Datastore.resource,"enable");
+        },
+        "disable": function(params){
+            OpenNebula.Action.simple_action(params,OpenNebula.Datastore.resource,"disable");
         }
     },
 
@@ -1577,6 +1747,86 @@ var OpenNebula = {
                                             OpenNebula.SecurityGroup.resource,
                                             "rename",
                                             action_obj);
+        }
+    },
+
+
+    "Vdc" : {
+        "resource" : "VDC",
+
+        "create" : function(params){
+            OpenNebula.Action.create(params,OpenNebula.Vdc.resource);
+        },
+        "del" : function(params){
+            OpenNebula.Action.del(params,OpenNebula.Vdc.resource);
+        },
+        "list" : function(params){
+            OpenNebula.Action.list(params,OpenNebula.Vdc.resource);
+        },
+        "show" : function(params){
+            OpenNebula.Action.show(params,OpenNebula.Vdc.resource);
+        },
+        "update" : function(params){
+            var action_obj = {"template_raw" : params.data.extra_param };
+            OpenNebula.Action.simple_action(params,
+                                     OpenNebula.Vdc.resource,
+                                     "update",
+                                     action_obj);
+        },
+        "fetch_template" : function(params){
+            OpenNebula.Action.show(params,OpenNebula.Vdc.resource,"template");
+        },
+        "rename" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,
+                                            OpenNebula.Vdc.resource,
+                                            "rename",
+                                            action_obj);
+        },
+
+        "add_group" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"add_group",action_obj);
+        },
+        "del_group" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"del_group",action_obj);
+        },
+
+        "add_cluster" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"add_cluster",action_obj);
+        },
+        "del_cluster" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"del_cluster",action_obj);
+        },
+
+        "add_host" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"add_host",action_obj);
+        },
+        "del_host" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"del_host",action_obj);
+        },
+
+        "add_datastore" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"add_datastore",action_obj);
+        },
+        "del_datastore" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"del_datastore",action_obj);
+        },
+
+        "add_vnet" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"add_vnet",action_obj);
+        },
+        "del_vnet" : function(params){
+            var action_obj = params.data.extra_param;
+            OpenNebula.Action.simple_action(params,OpenNebula.Vdc.resource,"del_vnet",action_obj);
         }
     },
 

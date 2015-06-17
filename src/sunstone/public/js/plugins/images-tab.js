@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -70,12 +70,13 @@ var create_image_tmpl ='<div class="row create_image_header">\
                    <div id="img_datastore" name="img_datastore">\
                    </div>\
                 </div>\
-                <div class="large-6 columns">\
-                  <input type="checkbox" id="img_persistent" name="img_persistent" value="YES" />\
-                  <label for="img_persistent">'+tr("Persistent")+
-                    '<span class="tip">'+tr("Persistence of the image")+'</span>'+
-                  '</label>\
-                </div>\
+                <div class="large-6 columns">'+
+                  (Config.isTabActionEnabled('images-tab', "Image.persistent") ? 
+                    '<input type="checkbox" id="img_persistent" name="img_persistent" value="YES" />\
+                    <label for="img_persistent">'+tr("Persistent")+
+                      '<span class="tip">'+tr("Persistence of the image")+'</span>'+
+                    '</label>' : '') +
+                '</div>\
               </div>\
               <br>\
              <fieldset>\
@@ -98,6 +99,7 @@ var create_image_tmpl ='<div class="row create_image_header">\
                </div>\
                <div class="row">\
                   <div id="file-uploader" class="large-12 columns text-center">\
+                    <label id="file-uploader-label" for="file-uploader-input"></label>\
                     <input id="file-uploader-input" type="file"/>\
                   </div>\
                </div>\
@@ -498,7 +500,7 @@ var images_tab = {
     content: '<div class="large-12 columns">\
       <div id="upload_progress_bars"></div>\
     </div>',
-    search_input: '<input id="image_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="image_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-upload"></i>&emsp;'+tr("Images"),
     info_header: '<i class="fa fa-fw fa-upload"></i>&emsp;'+tr("Image"),
     subheader: '<span class="total_images"/> <small>'+tr("TOTAL")+'</small>&emsp;\
@@ -651,9 +653,10 @@ function updateImageInfo(request,img){
            <tr>\
              <td class="key_td">'+tr("Persistent")+'</td>\
              <td class="value_td_persistency">'+(parseInt(img_info.PERSISTENT) ? tr("yes") : tr("no"))+'</td>\
-             <td><div id="div_edit_persistency">\
-                   <a id="div_edit_persistency_link" class="edit_e" href="#"><i class="fa fa-pencil-square-o right"/></a>\
-                 </div>\
+             <td><div id="div_edit_persistency">' + 
+                  (Config.isTabActionEnabled('images-tab', "Image.persistent") ? 
+                    '<a id="div_edit_persistency_link" class="edit_e" href="#"><i class="fa fa-pencil-square-o right"/></a>' : '') +
+                 '</div>\
              </td>\
            </tr>\
            <tr>\
@@ -693,7 +696,7 @@ function updateImageInfo(request,img){
                insert_extended_template_table(img_info.TEMPLATE,
                                                "Image",
                                                img_info.ID,
-                                               "Attributes") +
+                                               tr("Attributes")) +
        '</div>\
      </div>'
     }
@@ -933,7 +936,7 @@ function initialize_create_image_dialog(dialog) {
       $("#upload_image").attr("disabled", "disabled");
     } else {
       var uploader = new Resumable({
-          target: '/upload_chunk',
+          target: 'upload_chunk',
           chunkSize: 10*1024*1024,
           maxFiles: 1,
           testChunks: false,
@@ -950,6 +953,9 @@ function initialize_create_image_dialog(dialog) {
       uploader.on('fileAdded', function(file){
           fileName = file.fileName;
           file_input = fileName;
+
+          $('#file-uploader-input',dialog).hide()
+          $("#file-uploader-label", dialog).html(file.fileName);
       });
 
       uploader.on('uploadStart', function() {
@@ -973,7 +979,7 @@ function initialize_create_image_dialog(dialog) {
       uploader.on('fileSuccess', function(file) {
           $('div[id="'+fileName+'-info"]').text(tr('Registering in OpenNebula'));
           $.ajax({
-              url: '/upload',
+              url: 'upload',
               type: "POST",
               data: {
                   csrftoken: csrftoken,
@@ -1174,7 +1180,7 @@ function setupImageCloneDialog(){
   <div class="row">\
     <div class="large-12 columns">\
       <dl class="accordion" id="image_clone_advanced_toggle" data-accordion>\
-        <dd><a href="#image_clone_advanced"> '+tr("Advanced options")+'</a></dd>\
+        <dd class="accordion-navigation"><a href="#image_clone_advanced"> '+tr("Advanced options")+'</a></dd>\
       </dl>\
       <div id="image_clone_advanced" class="row collapse content">\
         <br>\

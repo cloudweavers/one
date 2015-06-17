@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -40,7 +40,7 @@ module VNMMAD
             lock
 
             vm_id = @vm['ID']
-            
+
             process do |nic|
                 #:white_ports_tcp => iptables_range
                 #:white_ports_udp => iptables_range
@@ -93,8 +93,15 @@ module VNMMAD
         def deactivate
             lock
 
-            vm_id =  @vm['ID']
+            vm_id = @vm['ID']
+
+            attach_nic_id = @vm['TEMPLATE/NIC[ATTACH="YES"]/NIC_ID']
+
             process do |nic|
+                if attach_nic_id && attach_nic_id != nic[:nic_id]
+                    next
+                end
+
                 chain   = "one-#{vm_id}-#{nic[:network_id]}"
                 iptables_out = `#{command(:iptables)} -n -v --line-numbers -L FORWARD`
                 if m = iptables_out.match(/.*#{chain}.*/)

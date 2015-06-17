@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -367,6 +367,7 @@ void Nebula::start(bool bootstrap_only)
             rc += UserPool::bootstrap(db);
             rc += AclManager::bootstrap(db);
             rc += ZonePool::bootstrap(db);
+            rc += VdcPool::bootstrap(db);
 
             // Create the system tables only if bootstrap went well
             if ( rc == 0 )
@@ -465,6 +466,8 @@ void Nebula::start(bool bootstrap_only)
         time_t  host_expiration;
 
         bool    vm_submit_on_hold;
+        float   cpu_cost;
+        float   mem_cost;
 
         vector<const Attribute *> vm_hooks;
         vector<const Attribute *> host_hooks;
@@ -481,9 +484,12 @@ void Nebula::start(bool bootstrap_only)
         vector<const Attribute *> inherit_datastore_attrs;
         vector<const Attribute *> inherit_vnet_attrs;
 
+        vector<const Attribute *> default_cost;
+
         clpool  = new ClusterPool(db);
         docpool = new DocumentPool(db);
         zonepool= new ZonePool(db, is_federation_slave());
+        vdcpool = new VdcPool(db, is_federation_slave());
 
         nebula_configuration->get("VM_HOOK", vm_hooks);
         nebula_configuration->get("HOST_HOOK",  host_hooks);
@@ -505,13 +511,41 @@ void Nebula::start(bool bootstrap_only)
 
         nebula_configuration->get("VM_SUBMIT_ON_HOLD",vm_submit_on_hold);
 
+        rc = nebula_configuration->get("DEFAULT_COST", default_cost);
+
+        cpu_cost = 0;
+        mem_cost = 0;
+
+        if (rc != 0)
+        {
+            const VectorAttribute * vatt = static_cast<const VectorAttribute *>
+                                              (default_cost[0]);
+
+            rc = vatt->vector_value("CPU_COST", cpu_cost);
+
+            if (rc != 0)
+            {
+                cpu_cost = 0;
+            }
+
+            rc = vatt->vector_value("MEMORY_COST", mem_cost);
+
+            if (rc != 0)
+            {
+                mem_cost = 0;
+            }
+        }
+
         vmpool = new VirtualMachinePool(db,
                                         vm_hooks,
                                         hook_location,
                                         remotes_location,
                                         vm_restricted_attrs,
                                         vm_expiration,
-                                        vm_submit_on_hold);
+                                        vm_submit_on_hold,
+                                        cpu_cost,
+                                        mem_cost);
+
         hpool  = new HostPool(db,
                               host_hooks,
                               hook_location,
@@ -563,7 +597,7 @@ void Nebula::start(bool bootstrap_only)
     }
     catch (exception&)
     {
-        throw;
+        throw runtime_error("Error Initializing OpenNebula pools");
     }
 
 
@@ -608,7 +642,7 @@ void Nebula::start(bool bootstrap_only)
     // ---- Life-cycle Manager ----
     try
     {
-        lcm = new LifeCycleManager(vmpool,hpool);
+        lcm = new LifeCycleManager();
     }
     catch (bad_alloc&)
     {
@@ -681,7 +715,7 @@ void Nebula::start(bool bootstrap_only)
     // ---- Dispatch Manager ----
     try
     {
-        dm = new DispatchManager(vmpool,hpool);
+        dm = new DispatchManager();
     }
     catch (bad_alloc&)
     {
@@ -825,6 +859,7 @@ void Nebula::start(bool bootstrap_only)
         bool rpc_log;
         string log_call_format;
         string rpc_filename = "";
+        int  message_size;
 
         nebula_configuration->get("PORT", rm_port);
         nebula_configuration->get("MAX_CONN", max_conn);
@@ -834,6 +869,7 @@ void Nebula::start(bool bootstrap_only)
         nebula_configuration->get("TIMEOUT", timeout);
         nebula_configuration->get("RPC_LOG", rpc_log);
         nebula_configuration->get("LOG_CALL_FORMAT", log_call_format);
+        nebula_configuration->get("MESSAGE_SIZE", message_size);
 
         if (rpc_log)
         {
@@ -842,13 +878,22 @@ void Nebula::start(bool bootstrap_only)
 
         rm = new RequestManager(rm_port, max_conn, max_conn_backlog,
             keepalive_timeout, keepalive_max_conn, timeout, rpc_filename,
-            log_call_format);
+            log_call_format, message_size);
     }
     catch (bad_alloc&)
     {
         NebulaLog::log("ONE", Log::ERROR, "Error starting RM");
         throw;
     }
+
+
+    // ---- Initialize Manager cross-reference pointers and pool references ----
+
+    dm->init_managers();
+
+    lcm->init_managers();
+
+    // ---- Start the Request Manager ----
 
     rc = rm->start();
 

@@ -341,6 +341,10 @@ select {
 
 // Totals
 
+.dashboard-widget-footer {
+  margin-bottom: 50px !important;
+}
+
 .totals-info {
   span {
     color: #777;
@@ -879,6 +883,13 @@ div.dataTables_scrollFoot table {
   color: #368a54;
 }
 
+.provision_back,
+.provision_show_vm_accordion,
+.provision_show_user_accordion,
+.provision_show_flow_accordion {
+  padding: 0px !important;  
+}
+
 .provision-input {
   border-color: #dfdfdf;
   border-radius: 3px;
@@ -1133,3 +1144,21 @@ hr {
   text-overflow: 
   ellipsis; height: 120px;
 }
+
+.vm-action-disabled {
+    //color: red !important;
+    color: #cfcfcf !important;
+/*
+    &:hover {
+        color: $alert-color !important;
+    }
+*/
+    cursor: default !important;
+}
+/*
+.vm-action-enabled {
+    &:hover {
+      color: $primary-color !important;
+    }
+}
+*/

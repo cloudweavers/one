@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -214,9 +214,8 @@ string& Group::to_xml_extended(string& xml, bool extended) const
 {
     ostringstream   oss;
     string          collection_xml;
+    string          admins_xml;
     string          template_xml;
-
-    set<pair<int,int> >::const_iterator it;
 
     ObjectCollection::to_xml(collection_xml);
 
@@ -225,16 +224,8 @@ string& Group::to_xml_extended(string& xml, bool extended) const
         "<ID>"   << oid  << "</ID>"        <<
         "<NAME>" << name << "</NAME>"      <<
         obj_template->to_xml(template_xml) <<
-        collection_xml;
-
-    for (it = providers.begin(); it != providers.end(); it++)
-    {
-        oss <<
-        "<RESOURCE_PROVIDER>" <<
-            "<ZONE_ID>"     << it->first    << "</ZONE_ID>"     <<
-            "<CLUSTER_ID>"  << it->second   << "</CLUSTER_ID>"  <<
-        "</RESOURCE_PROVIDER>";
-    }
+        collection_xml                     <<
+        admins.to_xml(admins_xml);
 
     if (extended)
     {
@@ -287,6 +278,19 @@ int Group::from_xml(const string& xml)
     ObjectXML::free_nodes(content);
     content.clear();
 
+    // Set of Admin IDs
+    ObjectXML::get_nodes("/GROUP/ADMINS", content);
+
+    if (content.empty())
+    {
+        return -1;
+    }
+
+    rc += admins.from_xml_node(content[0]);
+
+    ObjectXML::free_nodes(content);
+    content.clear();
+
     // Get associated metadata for the group
     ObjectXML::get_nodes("/GROUP/TEMPLATE", content);
 
@@ -300,25 +304,6 @@ int Group::from_xml(const string& xml)
     ObjectXML::free_nodes(content);
     content.clear();
 
-    // Set of resource providers
-    ObjectXML::get_nodes("/GROUP/RESOURCE_PROVIDER", content);
-
-    for (it = content.begin(); it != content.end(); it++)
-    {
-        ObjectXML tmp_xml(*it);
-
-        int zone_id, cluster_id;
-
-        rc += tmp_xml.xpath(zone_id, "/RESOURCE_PROVIDER/ZONE_ID", -1);
-        rc += tmp_xml.xpath(cluster_id, "/RESOURCE_PROVIDER/CLUSTER_ID", -1);
-
-        providers.insert(pair<int,int>(zone_id, cluster_id));
-    }
-
-    ObjectXML::free_nodes(content);
-    content.clear();
-
-
     if (rc != 0)
     {
         return -1;
@@ -330,72 +315,34 @@ int Group::from_xml(const string& xml)
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
 
-int Group::add_resource_provider(int zone_id, int cluster_id, string& error_msg)
+int Group::add_admin(int user_id, string& error_msg)
 {
-    AclManager* aclm = Nebula::instance().get_aclm();
+    int rc;
+    ostringstream oss;
 
-    int rc = 0;
-    long long mask_prefix;
-
-    pair<set<pair<int, int> >::iterator,bool> ret;
-
-    ret = providers.insert(pair<int,int>(zone_id, cluster_id));
-
-    if( !ret.second )
+    if ( collection_contains(user_id) == false )
     {
-        error_msg = "Resource provider is already assigned to this group";
+        oss << "User " << user_id << " is not part of Group "
+            << oid << ".";
+
+        error_msg = oss.str();
+
         return -1;
     }
 
-    if (cluster_id == ClusterPool::ALL_RESOURCES)
+    rc = admins.add_collection_id(user_id);
+
+    if (rc == -1)
     {
-        mask_prefix = AclRule::ALL_ID;
-    }
-    else
-    {
-        mask_prefix = AclRule::CLUSTER_ID | cluster_id;
-    }
+        oss << "User " << user_id << " is already an administrator of Group "
+            << oid << ".";
 
-    // @<gid> HOST/%<cid> MANAGE #<zone>
-    rc += aclm->add_rule(
-            AclRule::GROUP_ID |
-            oid,
+        error_msg = oss.str();
 
-            mask_prefix |
-            PoolObjectSQL::HOST,
-
-            AuthRequest::MANAGE,
-
-            AclRule::INDIVIDUAL_ID |
-            zone_id,
-
-            error_msg);
-
-    if (rc < 0)
-    {
-        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+        return -1;
     }
 
-    // @<gid> DATASTORE+NET/%<cid> USE #<zone>
-    rc += aclm->add_rule(
-            AclRule::GROUP_ID |
-            oid,
-
-            mask_prefix |
-            PoolObjectSQL::DATASTORE |
-            PoolObjectSQL::NET,
-
-            AuthRequest::USE,
-
-            AclRule::INDIVIDUAL_ID |
-            zone_id,
-
-            error_msg);
-
-    if (rc < 0)
-    {
-        NebulaLog::log("GROUP",Log::ERROR,error_msg);
-    }
+    add_admin_rules(user_id);
 
     return 0;
 }
@@ -403,70 +350,142 @@ int Group::add_resource_provider(int zone_id, int cluster_id, string& error_msg)
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
 
-int Group::del_resource_provider(int zone_id, int cluster_id, string& error_msg)
+void Group::add_admin_rules(int user_id)
 {
+    int     rc;
+    string  error_msg;
+
     AclManager* aclm = Nebula::instance().get_aclm();
 
-    int rc = 0;
+    // #<uid> USER/@<gid> USE+MANAGE+ADMIN+CREATE *
+    rc = aclm->add_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
 
-    long long mask_prefix;
+            PoolObjectSQL::USER |
+            AclRule::GROUP_ID |
+            oid,
 
-    if( providers.erase(pair<int,int>(zone_id, cluster_id)) != 1 )
+            AuthRequest::USE |
+            AuthRequest::MANAGE |
+            AuthRequest::ADMIN |
+            AuthRequest::CREATE,
+
+            AclRule::ALL_ID,
+
+            error_msg);
+
+    if (rc < 0)
     {
-        error_msg = "Resource provider is not assigned to this group";
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+
+    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP/@<gid> USE+MANAGE *
+    rc = aclm->add_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
+
+            PoolObjectSQL::VM |
+            PoolObjectSQL::NET |
+            PoolObjectSQL::IMAGE |
+            PoolObjectSQL::TEMPLATE |
+            PoolObjectSQL::DOCUMENT |
+            PoolObjectSQL::SECGROUP |
+            AclRule::GROUP_ID |
+            oid,
+
+            AuthRequest::USE |
+            AuthRequest::MANAGE,
+
+            AclRule::ALL_ID,
+
+            error_msg);
+
+    if (rc < 0)
+    {
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+}
+
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+
+int Group::del_admin(int user_id, string& error_msg)
+{
+    int rc = admins.del_collection_id(user_id);
+
+    if (rc == -1)
+    {
+        ostringstream oss;
+        oss << "User " << user_id << " is not an administrator of Group "
+            << oid << ".";
+
+        error_msg = oss.str();
+
         return -1;
     }
 
-    if (cluster_id == ClusterPool::ALL_RESOURCES)
-    {
-        mask_prefix = AclRule::ALL_ID;
-    }
-    else
-    {
-        mask_prefix = AclRule::CLUSTER_ID | cluster_id;
-    }
-
-    // @<gid> HOST/%<cid> MANAGE #<zid>
-    rc += aclm->del_rule(
-            AclRule::GROUP_ID |
-            oid,
-
-            mask_prefix |
-            PoolObjectSQL::HOST,
-
-            AuthRequest::MANAGE,
-
-            AclRule::INDIVIDUAL_ID |
-            zone_id,
-
-            error_msg);
-
-    if (rc < 0)
-    {
-        NebulaLog::log("GROUP",Log::ERROR,error_msg);
-    }
-
-    // @<gid> DATASTORE+NET/%<cid> USE #<zid>
-    rc += aclm->del_rule(
-            AclRule::GROUP_ID |
-            oid,
-
-            mask_prefix |
-            PoolObjectSQL::DATASTORE |
-            PoolObjectSQL::NET,
-
-            AuthRequest::USE,
-
-            AclRule::INDIVIDUAL_ID |
-            zone_id,
-
-            error_msg);
-
-    if (rc < 0)
-    {
-        NebulaLog::log("GROUP",Log::ERROR,error_msg);
-    }
+    del_admin_rules(user_id);
 
     return 0;
 }
 
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+
+void Group::del_admin_rules(int user_id)
+{
+    int     rc;
+    string  error_msg;
+
+    AclManager* aclm = Nebula::instance().get_aclm();
+
+    // #<uid> USER/@<gid> USE+MANAGE+ADMIN+CREATE *
+    rc = aclm->del_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
+
+            PoolObjectSQL::USER |
+            AclRule::GROUP_ID |
+            oid,
+
+            AuthRequest::USE |
+            AuthRequest::MANAGE |
+            AuthRequest::ADMIN |
+            AuthRequest::CREATE,
+
+            AclRule::ALL_ID,
+
+            error_msg);
+
+    if (rc < 0)
+    {
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+
+    // #<uid> VM+NET+IMAGE+TEMPLATE+DOCUMENT+SECGROUP/@<gid> USE+MANAGE *
+    rc = aclm->del_rule(
+            AclRule::INDIVIDUAL_ID |
+            user_id,
+
+            PoolObjectSQL::VM |
+            PoolObjectSQL::NET |
+            PoolObjectSQL::IMAGE |
+            PoolObjectSQL::TEMPLATE |
+            PoolObjectSQL::DOCUMENT |
+            PoolObjectSQL::SECGROUP |
+            AclRule::GROUP_ID |
+            oid,
+
+            AuthRequest::USE |
+            AuthRequest::MANAGE,
+
+            AclRule::ALL_ID,
+
+            error_msg);
+
+    if (rc < 0)
+    {
+        NebulaLog::log("GROUP",Log::ERROR,error_msg);
+    }
+}

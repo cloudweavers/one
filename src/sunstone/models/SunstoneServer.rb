@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -64,6 +64,7 @@ class SunstoneServer < CloudServer
             when "datastore"  then DatastorePoolJSON.new(client)
             when "zone"       then ZonePoolJSON.new(client)
             when "security_group"   then SecurityGroupPoolJSON.new(client, user_flag)
+            when "vdc"        then VdcPoolJSON.new(client)
             else
                 error = Error.new("Error: #{kind} resource not supported")
                 return [404, error.to_json]
@@ -120,6 +121,7 @@ class SunstoneServer < CloudServer
             when "datastore"  then DatastoreJSON.new(Acl.build_xml, @client)
             when "zone"       then ZoneJSON.new(Zone.build_xml, @client)
             when "security_group"   then SecurityGroupJSON.new(SecurityGroup.build_xml, @client)
+            when "vdc"        then VdcJSON.new(Vdc.build_xml, @client)
             else
                 error = Error.new("Error: #{kind} resource not supported")
                 return [404, error.to_json]
@@ -440,6 +442,7 @@ class SunstoneServer < CloudServer
             when "datastore"  then DatastoreJSON.new_with_id(id, @client)
             when "zone"       then ZoneJSON.new_with_id(id, @client)
             when "security_group"   then SecurityGroupJSON.new_with_id(id, @client)
+            when "vdc"        then VdcJSON.new_with_id(id, @client)
             else
                 error = Error.new("Error: #{kind} resource not supported")
                 return error

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -76,14 +76,6 @@ GroupPool::GroupPool(SqlDB * db,
         {
             goto error_groups;
         }
-
-        group = get(rc, true);
-
-        group->add_resource_provider(Nebula::instance().get_zone_id(), ClusterPool::ALL_RESOURCES, error_str);
-
-        update(group);
-
-        group->unlock();
 
         set_update_lastOID(99);
     }

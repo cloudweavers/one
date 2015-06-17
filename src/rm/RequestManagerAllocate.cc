@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -525,6 +525,42 @@ int TemplateAllocate::pool_allocate(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+bool TemplateAllocate::allocate_authorization(
+        Template *          tmpl,
+        RequestAttributes&  att,
+        PoolObjectAuth *    cluster_perms)
+{
+    if ( att.uid == UserPool::ONEADMIN_ID || att.gid == GroupPool::ONEADMIN_ID )
+    {
+        return true;
+    }
+
+    AuthRequest ar(att.uid, att.group_ids);
+    string      t64;
+    string      aname;
+
+    VirtualMachineTemplate * ttmpl = static_cast<VirtualMachineTemplate *>(tmpl);
+
+    // ------------ Check template for restricted attributes -------------------
+    if (ttmpl->check(aname))
+    {
+        ostringstream oss;
+
+        oss << "VM Template includes a restricted attribute " << aname;
+
+        failure_response(AUTHORIZATION,
+                authorization_error(oss.str(), att),
+                att);
+
+        return false;
+    }
+
+    return true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 int HostAllocate::pool_allocate(
         xmlrpc_c::paramList const&  paramList,
         Template *                  tmpl,
@@ -589,11 +625,31 @@ int GroupAllocate::pool_allocate(
         string&                     error_str,
         RequestAttributes&          att)
 {
+    int rc;
+
     string gname = xmlrpc_c::value_string(paramList.getString(1));
 
     GroupPool * gpool = static_cast<GroupPool *>(pool);
 
-    return gpool->allocate(gname, &id, error_str);
+    rc = gpool->allocate(gname, &id, error_str);
+
+    if (rc == -1)
+    {
+        return rc;
+    }
+
+    Vdc* vdc = vdcpool->get(VdcPool::DEFAULT_ID, true);
+
+    if (vdc != 0)
+    {
+        rc = vdc->add_group(id, error_str);
+
+        vdcpool->update(vdc);
+
+        vdc->unlock();
+    }
+
+    return rc;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -698,4 +754,21 @@ int SecurityGroupAllocate::pool_allocate(
 
     return sgpool->allocate(att.uid, att.gid, att.uname, att.gname, att.umask,
         tmpl, &id, error_str);
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int VdcAllocate::pool_allocate(
+        xmlrpc_c::paramList const&  paramList,
+        Template *                  tmpl,
+        int&                        id,
+        string&                     error_str,
+        RequestAttributes&          att)
+{
+    string name = xmlrpc_c::value_string(paramList.getString(1));
+
+    VdcPool * vdcpool = static_cast<VdcPool *>(pool);
+
+    return vdcpool->allocate(tmpl, &id, error_str);
 }

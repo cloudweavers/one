@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -139,7 +139,7 @@ module OpenNebula
             }
         end
 
-        # Gets an array of text from elemenets extracted
+        # Gets an array of text from elements extracted
         # using  the XPATH  expression passed as filter
         def retrieve_elements(filter)
             elements_array = Array.new
@@ -162,7 +162,7 @@ module OpenNebula
 
         end
 
-        # Gets an attribute from an elemenT
+        # Gets an attribute from an element
         # key:: _String_ xpath for the element
         # name:: _String_ name of the attribute
         def attr(key,name)

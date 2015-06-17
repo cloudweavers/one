@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -218,10 +218,9 @@ class EC2QueryServer < CloudServer
             return rc
         end
 
-        image_id = vm.disk_snapshot(1,
-                    params["Name"],
-                    OpenNebula::Image::IMAGE_TYPES[0],
-                    true)
+        image_id = vm.disk_saveas(1,
+                      params["Name"],
+                      OpenNebula::Image::IMAGE_TYPES[0])
 
         # TODO Add AMI Tags
         # TODO A new persistent image should be created for each instance

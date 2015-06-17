@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -322,7 +322,7 @@ module OpenNebula
         #   into account, if no end time is required use -1
         # @option params [Integer] :group Group id to filter the results
         # @option params [String] :xpath Xpath expression to filter the results.
-        #    For example: SHOWBACK[COST>0]
+        #    For example: SHOWBACK[TOTAL_COST>0]
         # @option params [String] :order_by_1 Xpath expression to group the
         # @option params [String] :order_by_2 Xpath expression to group the
         #   returned hash. This will be the second level of the hash
@@ -376,7 +376,7 @@ module OpenNebula
         #   into account, if no end time is required use -1
         # @option params [Integer] :group Group id to filter the results
         # @option params [String] :xpath Xpath expression to filter the results.
-        #    For example: SHOWBACK[COST>10]
+        #    For example: SHOWBACK[TOTAL_COST>10]
         #
         # @return [String] the xml representing the showback data
         def showback_xml(filter_flag=INFO_ALL, options={})

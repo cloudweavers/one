@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -267,6 +267,14 @@ protected:
      *    @param att the specific request attributes
      */
     void success_response(const string& val, RequestAttributes& att);
+
+    /**
+     *  Builds an XML-RPC response updating retval. After calling this function
+     *  the xml-rpc execute method should return
+     *    @param val to be returned to the client
+     *    @param att the specific request attributes
+     */
+    void success_response(bool val, RequestAttributes& att);
 
     /**
      *  Builds an XML-RPC response updating retval. After calling this function

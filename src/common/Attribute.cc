@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -252,6 +252,26 @@ string VectorAttribute::vector_value(const char *name) const
         return it->second;
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int VectorAttribute::vector_value(const char *name, string& value) const
+{
+    map<string,string>::const_iterator it;
+
+    it = attribute_value.find(name);
+
+    if (it == attribute_value.end())
+    {
+        return -1;
+    }
+
+    value = it->second;
+
+    return 0;
+}
+
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 

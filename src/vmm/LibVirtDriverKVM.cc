@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -124,6 +124,7 @@ int LibVirtDriver::deployment_description_kvm(
     string  ceph_host       = "";
     string  ceph_secret     = "";
     string  ceph_user       = "";
+    string  sheepdog_host   = "";
     string  gluster_host    = "";
     string  gluster_volume  = "";
 
@@ -443,6 +444,7 @@ int LibVirtDriver::deployment_description_kvm(
         gluster_host    = disk->vector_value("GLUSTER_HOST");
         gluster_volume  = disk->vector_value("GLUSTER_VOLUME");
 
+        sheepdog_host   = disk->vector_value("SHEEPDOG_HOST");
         total_bytes_sec = disk->vector_value("TOTAL_BYTES_SEC");
         read_bytes_sec  = disk->vector_value("READ_BYTES_SEC");
         write_bytes_sec = disk->vector_value("WRITE_BYTES_SEC");
@@ -536,6 +538,26 @@ int LibVirtDriver::deployment_description_kvm(
                      << ceph_secret <<"'/>" << endl
                      << "\t\t\t</auth>" << endl;
             }
+        }
+        else if ( type == "SHEEPDOG" || type == "SHEEPDOG_CDROM" )
+        {
+            if (type == "SHEEPDOG")
+            {
+                file << "\t\t<disk type='network' device='disk'>" << endl;
+            }
+            else
+            {
+                file << "\t\t<disk type='network' device='cdrom'>" << endl;
+            }
+
+            file << "\t\t\t<source protocol='sheepdog' name='" << source;
+
+            if ( clone == "YES" )
+            {
+                file << "-" << vm->get_oid() << "-" << disk_id;
+            }
+
+    	    do_network_hosts(file, sheepdog_host, "tcp", -1);
         }
         else if ( type == "GLUSTER" || type == "GLUSTER_CDROM" )
         {

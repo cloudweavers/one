@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -40,7 +40,7 @@
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-const char Log::error_names[] ={ 'E', 'W', 'I', 'D' };
+const char Log::error_names[] ={ 'E', 'W', 'I', 'D', 'D', 'D' };
 
 unsigned int Log::zone_id = 0;
 

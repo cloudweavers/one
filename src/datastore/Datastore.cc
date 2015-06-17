@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -52,7 +52,8 @@ Datastore::Datastore(
             type(IMAGE_DS),
             total_mb(0),
             free_mb(0),
-            used_mb(0)
+            used_mb(0),
+            state(READY)
 {
     if (ds_template != 0)
     {
@@ -72,6 +73,30 @@ Datastore::~Datastore()
 {
     delete obj_template;
 };
+
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+
+int Datastore::enable(bool enable, string& error_str)
+{
+    if (type != SYSTEM_DS)
+    {
+        error_str = "Only SYSTEM_DS can be disabled or enabled";
+        return -1;
+    }
+
+
+    if (enable)
+    {
+        state = READY;
+    }
+    else
+    {
+        state = DISABLED;
+    }
+
+    return 0;
+}
 
 /* ------------------------------------------------------------------------ */
 /* ------------------------------------------------------------------------ */
@@ -335,6 +360,7 @@ int Datastore::insert(SqlDB *db, string& error_str)
                     goto error_disk_type;
                     break;
                 case Image::RBD_CDROM:
+                case Image::SHEEPDOG_CDROM:
                 case Image::GLUSTER_CDROM:
                     goto error_invalid_disk_type;
                     break;
@@ -494,6 +520,7 @@ string& Datastore::to_xml(string& xml) const
         "<BASE_PATH><![CDATA["  << base_path    << "]]></BASE_PATH>"<<
         "<TYPE>"                << type         << "</TYPE>"        <<
         "<DISK_TYPE>"           << disk_type    << "</DISK_TYPE>"   <<
+        "<STATE>"               << state        << "</STATE>"       <<
         "<CLUSTER_ID>"          << cluster_id   << "</CLUSTER_ID>"  <<
         "<CLUSTER>"             << cluster      << "</CLUSTER>"     <<
         "<TOTAL_MB>"            << total_mb     << "</TOTAL_MB>"    <<
@@ -516,6 +543,7 @@ int Datastore::from_xml(const string& xml)
     int rc = 0;
     int int_disk_type;
     int int_ds_type;
+    int int_state;
     vector<xmlNodePtr> content;
 
     // Initialize the internal XML object
@@ -531,8 +559,9 @@ int Datastore::from_xml(const string& xml)
     rc += xpath(ds_mad,       "/DATASTORE/DS_MAD",    "not_found");
     rc += xpath(tm_mad,       "/DATASTORE/TM_MAD",    "not_found");
     rc += xpath(base_path,    "/DATASTORE/BASE_PATH", "not_found");
-    rc += xpath(int_ds_type,  "/DATASTORE/TYPE",    -1);
+    rc += xpath(int_ds_type,  "/DATASTORE/TYPE",      -1);
     rc += xpath(int_disk_type,"/DATASTORE/DISK_TYPE", -1);
+    rc += xpath(int_state,    "/DATASTORE/STATE",     0);
 
     rc += xpath(cluster_id, "/DATASTORE/CLUSTER_ID", -1);
     rc += xpath(cluster,    "/DATASTORE/CLUSTER",    "not_found");
@@ -546,6 +575,7 @@ int Datastore::from_xml(const string& xml)
 
     disk_type = static_cast<Image::DiskType>(int_disk_type);
     type      = static_cast<Datastore::DatastoreType>(int_ds_type);
+    state     = static_cast<DatastoreState>(int_state);
 
     // Get associated classes
     ObjectXML::get_nodes("/DATASTORE/IMAGES", content);

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -15,6 +15,7 @@
 /* -------------------------------------------------------------------------- */
 
 #include "LifeCycleManager.h"
+#include "Nebula.h"
 #include "NebulaLog.h"
 
 /* -------------------------------------------------------------------------- */
@@ -60,6 +61,22 @@ int LifeCycleManager::start()
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+void LifeCycleManager::init_managers()
+{
+    Nebula& nd = Nebula::instance();
+
+    tm  = nd.get_tm();
+    vmm = nd.get_vmm();
+    dm  = nd.get_dm();
+
+    vmpool = nd.get_vmpool();
+    hpool  = nd.get_hpool();
+    ipool  = nd.get_ipool();
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 void LifeCycleManager::trigger(Actions action, int _vid)
 {
     int *   vid;
@@ -99,10 +116,6 @@ void LifeCycleManager::trigger(Actions action, int _vid)
 
     case CANCEL_FAILURE:
         aname = "CANCEL_FAILURE";
-        break;
-
-    case MONITOR_FAILURE:
-        aname = "MONITOR_FAILURE";
         break;
 
     case MONITOR_SUSPEND:
@@ -153,12 +166,12 @@ void LifeCycleManager::trigger(Actions action, int _vid)
         aname = "DETACH_FAILURE";
         break;
 
-    case SAVEAS_HOT_SUCCESS:
-        aname = "SAVEAS_HOT_SUCCESS";
+    case SAVEAS_SUCCESS:
+        aname = "SAVEAS_SUCCESS";
         break;
 
-    case SAVEAS_HOT_FAILURE:
-        aname = "SAVEAS_HOT_FAILURE";
+    case SAVEAS_FAILURE:
+        aname = "SAVEAS_FAILURE";
         break;
 
     case ATTACH_NIC_SUCCESS:
@@ -207,6 +220,14 @@ void LifeCycleManager::trigger(Actions action, int _vid)
 
     case SNAPSHOT_DELETE_FAILURE:
         aname = "SNAPSHOT_DELETE_FAILURE";
+        break;
+
+    case DISK_SNAPSHOT_SUCCESS:
+        aname = "DISK_SNAPSHOT_SUCCESS";
+        break;
+
+    case DISK_SNAPSHOT_FAILURE:
+        aname = "DISK_SNAPSHOT_FAILURE";
         break;
 
     case DEPLOY:
@@ -324,15 +345,11 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     }
     else if (action == "CANCEL_SUCCESS")
     {
-        cancel_success_action(vid);
+        shutdown_success_action(vid);
     }
     else if (action == "CANCEL_FAILURE")
     {
-        cancel_failure_action(vid);
-    }
-    else if (action == "MONITOR_FAILURE")
-    {
-        monitor_failure_action(vid);
+        shutdown_failure_action(vid);
     }
     else if (action == "MONITOR_SUSPEND")
     {
@@ -372,7 +389,7 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     }
     else if (action == "ATTACH_FAILURE")
     {
-        attach_failure_action(vid, false);
+        attach_failure_action(vid);
     }
     else if (action == "DETACH_SUCCESS")
     {
@@ -382,13 +399,13 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     {
         detach_failure_action(vid);
     }
-    else if (action == "SAVEAS_HOT_SUCCESS")
+    else if (action == "SAVEAS_SUCCESS")
     {
-        saveas_hot_success_action(vid);
+        saveas_success_action(vid);
     }
-    else if (action == "SAVEAS_HOT_FAILURE")
+    else if (action == "SAVEAS_FAILURE")
     {
-        saveas_hot_failure_action(vid);
+        saveas_failure_action(vid);
     }
     else if (action == "ATTACH_NIC_SUCCESS")
     {
@@ -438,6 +455,14 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     {
         snapshot_delete_failure(vid);
     }
+    else if (action == "DISK_SNAPSHOT_SUCCESS")
+    {
+        disk_snapshot_success(vid);
+    }
+    else if (action == "DISK_SNAPSHOT_FAILURE")
+    {
+        disk_snapshot_failure(vid);
+    }
     else if (action == "DEPLOY")
     {
         deploy_action(vid);
@@ -456,7 +481,7 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     }
     else if (action == "CANCEL")
     {
-        cancel_action(vid);
+        shutdown_action(vid, true);
     }
     else if (action == "MIGRATE")
     {
@@ -468,7 +493,7 @@ void LifeCycleManager::do_action(const string &action, void * arg)
     }
     else if (action == "SHUTDOWN")
     {
-        shutdown_action(vid);
+        shutdown_action(vid, false);
     }
     else if (action == "UNDEPLOY")
     {

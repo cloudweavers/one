@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -22,7 +22,7 @@ var create_vnet_wizard_html =
       <div>\
         <dl id="vnet_create_tabs" class="tabs right-info-tabs text-center" data-tab>\
           <dd class="active"><a href="#vnetCreateGeneralTab"><i class="fa fa-globe"></i><br>'+tr("General")+'</a></dd>\
-          <dd><a href="#vnetCreateBridgeTab"><i class="fa fa-cog"></i><br>'+tr("Configuration")+'</a></dd>\
+          <dd><a href="#vnetCreateBridgeTab"><i class="fa fa-cog"></i><br>'+tr("Conf")+'</a></dd>\
           <dd><a href="#vnetCreateARTab"><i class="fa fa-align-justify"></i><br>'+tr("Addresses")+'</a></dd>\
           <dd><a href="#vnetCreateSecurityTab"><i class="fa fa-shield"></i><br>'+tr("Security")+'</a></dd>\
           <dd><a href="#vnetCreateContextTab"><i class="fa fa-folder"></i><br>'+tr("Context")+'</a></dd>\
@@ -49,24 +49,6 @@ var create_vnet_wizard_html =
           <div class="content" id="vnetCreateBridgeTab">\
             <div class="row">\
               <div class="large-6 columns">\
-                <label for="mac_spoofing">\
-                  <input type="checkbox" wizard_field="FILTER_MAC_SPOOFING" value="YES" name="mac_spoofing" id="mac_spoofing" />\
-                  '+tr("Filter MAC spoofing")+'\
-                  <span class="tip">'+tr("Activate the filter to prevent mac spoofing. Only works with FW, 802.1Q and Ebtables network drivers.")+'</span>\
-                </label>\
-              </div>\
-            </div>\
-            <div class="row">\
-              <div class="large-6 columns">\
-                <label for="ip_spoofing">\
-                  <input type="checkbox" wizard_field="FILTER_IP_SPOOFING" value="YES" name="ip_spoofing" id="ip_spoofing" />\
-                  '+tr("Filter IP spoofing")+'\
-                  <span class="tip">'+tr("Activate the filter to prevent IP spoofing. Only works with FW, 802.1Q and Ebtables network drivers.")+'</span>\
-                </label>\
-              </div>\
-            </div>\
-            <div class="row">\
-              <div class="large-6 columns">\
                   <label for="bridge">'+tr("Bridge")+':\
                     <span class="tip">'+tr("Name of the physical bridge in the physical host where the VM should connect its network interface")+'</span>\
                   </label>\
@@ -81,6 +63,7 @@ var create_vnet_wizard_html =
                 <select name="network_mode" id="network_mode">\
                   <option value="default">'+tr("Default")+'</option>\
                   <option value="802.1Q">'+tr("802.1Q")+'</option>\
+                  <option value="vxlan">'+tr("VXLAN")+'</option>\
                   <option value="ebtables">'+tr("ebtables")+'</option>\
                   <option value="openvswitch">'+tr("Open vSwitch")+'</option>\
                   <option value="vmware">'+tr("VMware")+'</option>\
@@ -89,12 +72,31 @@ var create_vnet_wizard_html =
               <div class="large-12 columns">\
                 <div class="network_mode_description" value="default">'+tr("Default: dummy driver that doesn’t perform any network operation. Firewalling rules are also ignored.")+'</div>\
                 <div class="network_mode_description" value="802.1Q">'+tr("802.1Q: restrict network access through VLAN tagging, which also requires support from the hardware switches.")+'</div>\
+                <div class="network_mode_description" value="vxlan">'+tr("VXLAN: creates a L2 network overlay based on the VXLAN protocol, each VLAN has associated a multicast address in the 239.0.0.0/8 range.")+'</div>\
                 <div class="network_mode_description" value="ebtables">'+tr("ebtables: restrict network access through Ebtables rules. No special hardware configuration required.")+'</div>\
                 <div class="network_mode_description" value="openvswitch">'+tr("Open vSwitch: restrict network access with Open vSwitch Virtual Switch.")+'</div>\
                 <div class="network_mode_description" value="vmware">'+tr("VMware: uses the VMware networking infrastructure to provide an isolated and 802.1Q compatible network for VMs launched with the VMware hypervisor.")+'</div>\
               </div>\
             </div>\
             <br>\
+            <div class="row">\
+              <div class="large-6 columns">\
+                <label for="mac_spoofing">\
+                  <input type="checkbox" wizard_field="FILTER_MAC_SPOOFING" value="YES" name="mac_spoofing" id="mac_spoofing" />\
+                  '+tr("Filter MAC spoofing")+'\
+                  <span class="tip">'+tr("Activate the filter to prevent mac spoofing. Only works with FW, 802.1Q, VXLAN and Ebtables network drivers.")+'</span>\
+                </label>\
+              </div>\
+            </div>\
+            <div class="row">\
+              <div class="large-6 columns">\
+                <label for="ip_spoofing">\
+                  <input type="checkbox" wizard_field="FILTER_IP_SPOOFING" value="YES" name="ip_spoofing" id="ip_spoofing" />\
+                  '+tr("Filter IP spoofing")+'\
+                  <span class="tip">'+tr("Activate the filter to prevent IP spoofing. Only works with FW, 802.1Q, VXLAN and Ebtables network drivers.")+'</span>\
+                </label>\
+              </div>\
+            </div>\
             <div class="row">\
               <div class="large-6 columns">\
                 <div class="row">\
@@ -124,6 +126,14 @@ var create_vnet_wizard_html =
                     <input type="text" wizard_field="PHYDEV" name="phydev" id="phydev" />\
                   </div>\
                 </div>\
+              </div>\
+            </div>\
+            <div class="row">\
+              <div class="large-3 columns">\
+                <label for="mtu">'+tr("MTU")+':\
+                  <span class="tip">'+tr("Set the MTU for the tagged interface. This MTU will be then inherited by the bridge and by the tagged interface.")+'</span>\
+                </label>\
+                <input type="text" wizard_field="MTU" name="mtu" id="mtu" />\
               </div>\
             </div>\
           </div>\
@@ -251,6 +261,13 @@ var vnet_actions = {
                 $("#default_sg_warning").show();
                 $("input#name",context).focus();
             });
+        }
+    },
+
+    "Network.import_dialog" : {
+        type: "create",
+        call: function(){
+          popUpNetworkImportDialog();
         }
     },
 
@@ -554,6 +571,13 @@ var vnet_buttons = {
         type: "create_dialog",
         layout: "create"
     },
+    "Network.import_dialog" : {
+        type: "create_dialog",
+        layout: "create",
+        text:  tr("Import"),
+        icon: '<i class="fa fa-download">',
+        alwaysActive: true
+    },
     "Network.update_dialog" : {
         type: "action",
         layout: "main",
@@ -619,7 +643,7 @@ var vnets_tab = {
     buttons: vnet_buttons,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="vnet_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="vnet_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-globe"></i>&emsp;'+tr("Virtual Networks"),
     info_header: '<i class="fa fa-fw fa-globe"></i>&emsp;'+tr("Virtual Network"),
     subheader: '<span class="total_vnets"/> <small>'+tr("TOTAL")+'</small>&emsp;\
@@ -805,7 +829,7 @@ function updateVNetworkInfo(request,vn){
             insert_extended_template_table(stripped_vn_template,
                                                        "Network",
                                                        vn_info.ID,
-                                                       "Attributes",
+                                                       tr("Attributes"),
                                                        hidden_values) +
         '</div>\
       </div>';
@@ -1070,6 +1094,18 @@ function ar_show_info(vn_info, ar_id){
           </thead>\
           <tbody>';
 
+    first_mac = ar.MAC;
+    last_mac = ar.MAC_END;
+
+    first_ip = ar.IP;
+    last_ip = ar.IP_END;
+
+    first_ip6_global = ar.IP6_GLOBAL;
+    last_ip6_global = ar.IP6_GLOBAL_END;
+
+    first_ip6_ula = ar.IP6_ULA;
+    last_ip6_ula = ar.IP6_ULA_END;
+
     // TODO: translate ar.TYPE values?
     html += ar_attr(tr("Type"),         ar.TYPE);
     html += ar_attr(tr("MAC Start"),    ar.MAC);
@@ -1080,6 +1116,12 @@ function ar_show_info(vn_info, ar_id){
     html += ar_attr(tr("Used leases"),  ar.USED_LEASES);
     html += ar_attr(tr("Reservation parent AR"),  ar.PARENT_NETWORK_AR_ID);
 
+    delete ar["MAC_END"];
+    delete ar["IP_END"];
+    delete ar["IP6_ULA"];
+    delete ar["IP6_ULA_END"];
+    delete ar["IP6_GLOBAL"];
+    delete ar["IP6_GLOBAL_END"];
     delete ar["AR_ID"];
     delete ar["TYPE"];
     delete ar["MAC"];
@@ -1112,6 +1154,57 @@ function ar_show_info(vn_info, ar_id){
     $.each(ar, function(key, value){
         html += ar_attr(key, value);
     });
+
+    html +=
+          '</tbody>\
+        </table>\
+      </div>\
+    </div>';
+
+    html +=
+    '<div class="row collapse">\
+      <div class="large-12 columns">\
+        <table class="dataTable extended_table">\
+          <thead>\
+            <tr>\
+              <th>'+tr("Range")+'</th>\
+              <th>'+tr("First")+'</th>\
+              <th>'+tr("Last")+'</th>\
+            </tr>\
+          </thead>\
+          <tbody>\
+            <tr>\
+              <td class="key_td">'+tr("MAC")+'</td>\
+              <td class="value_td">'+first_mac+'</td>\
+              <td class="value_td">'+last_mac+'</td>\
+            </tr>';
+
+    if (first_ip != undefined){
+        html+=
+            '<tr>\
+              <td class="key_td">'+tr("IP")+'</td>\
+              <td class="value_td">'+first_ip+'</td>\
+              <td class="value_td">'+last_ip+'</td>\
+            </tr>';
+    }
+
+    if (first_ip6_global != undefined){
+        html +=
+            '<tr>\
+              <td class="key_td">'+tr("IP6_GLOBAL")+'</td>\
+              <td class="value_td">'+first_ip6_global+'</td>\
+              <td class="value_td">'+last_ip6_global+'</td>\
+            </tr>';
+    }
+
+    if (first_ip6_ula != undefined){
+        html +=
+            '<tr>\
+              <td class="key_td">'+tr("IP6_ULA")+'</td>\
+              <td class="value_td">'+first_ip6_ula+'</td>\
+              <td class="value_td">'+last_ip6_ula+'</td>\
+            </tr>';
+    }
 
     html +=
           '</tbody>\
@@ -1342,6 +1435,9 @@ function initialize_create_vnet_dialog(dialog) {
             $('input#phydev,label[for="phydev"]',dialog).hide().prop('wizard_field_disabled', true);
             $('select#vlan,label[for="vlan"]',dialog).hide().prop('wizard_field_disabled', true);
             $('input#vlan_id,label[for="vlan_id"]',dialog).hide().prop('wizard_field_disabled', true);
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mtu,label[for="mtu"]',dialog).hide().prop('wizard_field_disabled', false);
 
             $('input#phydev',dialog).removeAttr('required');
             $('input#bridge',dialog).attr('required', '');
@@ -1351,6 +1447,21 @@ function initialize_create_vnet_dialog(dialog) {
             $('input#phydev,label[for="phydev"]',dialog).show().prop('wizard_field_disabled', false);
             $('select#vlan,label[for="vlan"]',dialog).show().prop('wizard_field_disabled', false);
             $('input#vlan_id,label[for="vlan_id"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mtu,label[for="mtu"]',dialog).show().prop('wizard_field_disabled', false);
+
+            $('input#phydev',dialog).removeAttr('required');
+            $('input#bridge',dialog).removeAttr('required');
+            break;
+        case "vxlan":
+            $('input#bridge,label[for="bridge"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#phydev,label[for="phydev"]',dialog).show().prop('wizard_field_disabled', false);
+            $('select#vlan,label[for="vlan"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#vlan_id,label[for="vlan_id"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mtu,label[for="mtu"]',dialog).show().prop('wizard_field_disabled', false);
 
             $('input#phydev',dialog).removeAttr('required');
             $('input#bridge',dialog).removeAttr('required');
@@ -1360,6 +1471,9 @@ function initialize_create_vnet_dialog(dialog) {
             $('input#phydev,label[for="phydev"]',dialog).hide().prop('wizard_field_disabled', true);
             $('select#vlan,label[for="vlan"]',dialog).show().prop('wizard_field_disabled', false);
             $('input#vlan_id,label[for="vlan_id"]',dialog).hide().prop('wizard_field_disabled', true);
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mtu,label[for="mtu"]',dialog).hide().prop('wizard_field_disabled', false);
 
             $('input#phydev',dialog).removeAttr('required');
             $('input#bridge',dialog).attr('required', '');
@@ -1369,6 +1483,9 @@ function initialize_create_vnet_dialog(dialog) {
             $('input#phydev,label[for="phydev"]',dialog).hide().prop('wizard_field_disabled', true);
             $('select#vlan,label[for="vlan"]',dialog).show().prop('wizard_field_disabled', false);
             $('input#vlan_id,label[for="vlan_id"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).hide().prop('wizard_field_disabled', true);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+            $('input#mtu,label[for="mtu"]',dialog).hide().prop('wizard_field_disabled', false);
 
             $('input#phydev',dialog).removeAttr('required');
             $('input#bridge',dialog).attr('required', '');
@@ -1378,6 +1495,9 @@ function initialize_create_vnet_dialog(dialog) {
             $('input#phydev,label[for="phydev"]',dialog).hide();
             $('select#vlan,label[for="vlan"]',dialog).show();
             $('input#vlan_id,label[for="vlan_id"]',dialog).show();
+            $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).hide().prop('wizard_field_disabled', true);
+            $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).hide().prop('wizard_field_disabled', true);
+            $('input#mtu,label[for="mtu"]',dialog).hide().prop('wizard_field_disabled', false);
 
             $('input#phydev',dialog).removeAttr('required');
             $('input#bridge',dialog).attr('required', '');
@@ -1398,10 +1518,20 @@ function initialize_create_vnet_dialog(dialog) {
     dialog.foundation();
 
     //Process form
-    $('#create_vnet_form_wizard',dialog).on('invalid.fndtn.abide', function () {
+    $('#create_vnet_form_wizard',dialog).on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_vnet_form", $("#vnets-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         //Fetch values
         var network_json = {};
 
@@ -1440,10 +1570,20 @@ function initialize_create_vnet_dialog(dialog) {
         }
     });
 
-    $('#create_vnet_form_advanced',dialog).on('invalid.fndtn.abide', function () {
+    $('#create_vnet_form_advanced',dialog).on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_vnet_form", $("#vnets-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         if ($('#create_vnet_form_advanced',dialog).attr("action") == "create") {
 
             var template = $('textarea#template',dialog).val();
@@ -1485,6 +1625,8 @@ function fillVNetUpdateFormPanel(vnet, dialog){
     $('input#phydev,label[for="phydev"]',dialog).show().prop('wizard_field_disabled', false).removeAttr('required');
     $('select#vlan,label[for="vlan"]',dialog).show().prop('wizard_field_disabled', false).removeAttr('required');
     $('input#vlan_id,label[for="vlan_id"]',dialog).show().prop('wizard_field_disabled', false).removeAttr('required');
+    $('input#ip_spoofing,label[for="ip_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
+    $('input#mac_spoofing,label[for="mac_spoofing"]',dialog).show().prop('wizard_field_disabled', false);
 
     if (vnet.TEMPLATE["SECURITY_GROUPS"] != undefined &&
         vnet.TEMPLATE["SECURITY_GROUPS"].length != 0){
@@ -1721,6 +1863,12 @@ function fill_ar_tab_data(ar_json, ar_section){
     delete ar_json["AR_ID"];
     delete ar_json["USED_LEASES"];
     delete ar_json["LEASES"];
+    delete ar_json["MAC_END"];
+    delete ar_json["IP_END"];
+    delete ar_json["IP6_ULA"];
+    delete ar_json["IP6_ULA_END"];
+    delete ar_json["IP6_GLOBAL"];
+    delete ar_json["IP6_GLOBAL_END"];
 
     if (ar_json["SECURITY_GROUPS"] != undefined &&
         ar_json["SECURITY_GROUPS"].length != 0){
@@ -2214,6 +2362,374 @@ function setupARTableSelect(section, context_id, vnet_id_fn){
     };
 
     return setupResourceTableSelect(section, context_id, options);
+}
+
+function popUpNetworkImportDialog(){
+    setupNetworkImportDialog();
+    var dialog = $('#network_import_dialog');
+    $(dialog).foundation().foundation('reveal', 'open');
+}
+
+// Netowrk import dialog
+function setupNetworkImportDialog(){
+    //Append to DOM
+    dialogs_context.append('<div id="network_import_dialog"></div>');
+    var dialog = $('#network_import_dialog',dialogs_context);
+
+    //Put HTML in place
+
+    var html = '<div class="row">\
+        <h3 id="import_network_header" class="subheader">'+tr("Import vCenter Networks")+'</h3>\
+      </div>\
+      <div class="row vcenter_credentials">\
+        <fieldset>\
+          <legend>'+tr("vCenter")+'</legend>\
+          <div class="row">\
+            <div class="large-6 columns">\
+              <label for="vcenter_user">' + tr("User")  + '</label>\
+              <input type="text" name="vcenter_user" id="vcenter_user" />\
+            </div>\
+            <div class="large-6 columns">\
+              <label for="vcenter_host">' + tr("Hostname")  + '</label>\
+              <input type="text" name="vcenter_host" id="vcenter_host" />\
+            </div>\
+          </div>\
+          <div class="row">\
+            <div class="large-6 columns">\
+              <label for="vcenter_password">' + tr("Password")  + '</label>\
+              <input type="password" name="vcenter_password" id="vcenter_password" />\
+            </div>\
+            <div class="large-6 columns">\
+              <br>\
+              <a class="button radius small right" id="get_vcenter_networks">'+tr("Get Networks")+'</a>\
+            </div>\
+          </div>\
+          <div class="vcenter_networks">\
+          </div>\
+          <br>\
+          <div class="row">\
+            <div class="large-12 columns">\
+              <br>\
+              <a class="button radius small right success" id="import_vcenter_networks">'+tr("Import")+'</a>\
+            </div>\
+          </div>\
+        </fieldset>\
+        <a class="close-reveal-modal">&#215;</a>\
+      </div>\
+      ';
+
+
+    dialog.html(html);
+    dialog.addClass("reveal-modal medium").attr("data-reveal", "");
+
+    $("#get_vcenter_networks", dialog).on("click", function(){
+      var networks_container = $(".vcenter_networks", dialog);
+
+      var vcenter_user = $("#vcenter_user", dialog).val();
+      var vcenter_password = $("#vcenter_password", dialog).val();
+      var vcenter_host = $("#vcenter_host", dialog).val();
+
+
+      fillVCenterNetworks({
+        container: networks_container,
+        vcenter_user: vcenter_user,
+        vcenter_password: vcenter_password,
+        vcenter_host: vcenter_host
+      });
+
+      return false;
+    })
+
+    $("#import_vcenter_networks", dialog).on("click", function(){
+      $(this).hide();
+
+      $.each($(".network_name:checked", dialog), function(){
+        var network_context = $(this).closest(".vcenter_network");
+
+        $(".vcenter_network_result:not(.success)", network_context).html(
+            '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+              '<i class="fa fa-cloud fa-stack-2x"></i>'+
+              '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+            '</span>');
+
+        var network_size = $(".netsize", network_context).val();
+        var network_tmpl = $(this).data("one_network");
+        var netname      = $(this).data("network_name");
+        var type         = $('.type_select', network_context).val();
+
+        var ar_array = [];
+        ar_array.push("TYPE=" + type);
+        ar_array.push("SIZE=" + network_size);
+
+        switch(type) {
+            case 'ETHER':
+                var mac = $('.eth_mac_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+
+                break;
+            case 'IP4':
+                var mac = $('.four_mac_net', network_context).val();
+                var ip = $('.four_ip_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+                if (ip) {
+                  ar_array.push("IP=" + ip);
+                }
+
+                break;
+            case 'IP6':
+                var mac = $('.six_mac_net', network_context).val();
+                var gp = $('.six_global_net', network_context).val();
+                var ula = $('.six_mac_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+                if (gp) {
+                  ar_array.push("GLOBAL_PREFIX=" + gp);
+                }
+                if (ula){
+                  ar_array.push("ULA_PREFIX=" + ula);
+                }
+
+                break;
+        }
+
+        network_tmpl += "\nAR=[" 
+        network_tmpl += ar_array.join(",\n")
+        network_tmpl += "]"
+
+        if($(".vlaninfo", network_context))
+        {
+           network_tmpl += "VLAN=\"YES\"\n";
+           network_tmpl += "VLAN_ID="+$(".vlaninfo", network_context).val()+"\n";
+        }
+
+        var vnet_json = {
+          "vnet": {
+            "vnet_raw": network_tmpl
+          }
+        };
+
+        OpenNebula.Network.create({
+            timeout: true,
+            data: vnet_json,
+            success: function(request, response) {
+              OpenNebula.Helper.clear_cache("VNET");
+              $(".vcenter_network_result", network_context).addClass("success").html(
+                  '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                    '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                    '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
+                  '</span>');
+
+              $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="running-color">'+
+                    tr("Virtual Network created successfully")+' ID:'+response.VNET.ID+
+                  '</p>');
+              Sunstone.runAction("Network.refresh");
+            },
+            error: function (request, error_json){
+                $(".vcenter_network_result", network_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                      '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
+                    '</span>');
+
+                $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="error-color">'+
+                      (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
+                    '</p>');
+                Sunstone.runAction("Network.refresh");
+            }
+        });
+      });
+   });
+}
+
+
+/*
+  Retrieve the list of networks from vCenter and fill the container with them
+  
+  opts = {
+    datacenter: "Datacenter Name",
+    cluster: "Cluster Name",
+    container: Jquery div to inject the html,
+    vcenter_user: vCenter Username,
+    vcenter_password: vCenter Password,
+    vcenter_host: vCenter Host
+  }
+ */
+function fillVCenterNetworks(opts) {
+  var path = '/vcenter/networks';
+  opts.container.html(generateAdvancedSection({
+    html_id: path,
+    title: tr("Networks"),
+    content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+    '</span>'
+  }))
+
+  $('a', opts.container).trigger("click")
+
+  $.ajax({
+      url: path,
+      type: "GET",
+      data: {timeout: false},
+      dataType: "json",
+      headers: {
+        "X_VCENTER_USER": opts.vcenter_user,
+        "X_VCENTER_PASSWORD": opts.vcenter_password,
+        "X_VCENTER_HOST": opts.vcenter_host
+      },
+      success: function(response){
+        $(".content", opts.container).html("");
+
+        $('<div class="row">' +
+            '<div class="large-12 columns">' +
+              '<p style="color: #999">' + tr("Please select the vCenter Networks to be imported to OpenNebula.") + '</p>' +
+            '</div>' +
+          '</div>').appendTo($(".content", opts.container))
+
+        $.each(response, function(datacenter_name, networks){
+          $('<div class="row">' +
+              '<div class="large-12 columns">' +
+                '<h5>' +
+                  datacenter_name + ' ' + tr("DataCenter") +
+                '</h5>' +
+              '</div>' +
+            '</div>').appendTo($(".content", opts.container))
+
+          if (networks.length == 0) {
+              $('<div class="row">' +
+                  '<div class="large-12 columns">' +
+                    '<label>' +
+                      tr("No new networks found in this DataCenter") +
+                    '</label>' +
+                  '</div>' +
+                '</div>').appendTo($(".content", opts.container))
+          } else {
+            $.each(networks, function(id, network){
+              var netname   = network.name.replace(" ","_");
+              var vlan_info = ""
+
+              if (network.vlan)
+              {
+                   var vlan_info = '<div class="vlan_info">' +
+                        '<div class="large-4 columns">'+
+                          '<label>' + tr("VLAN") + 
+                             '<input type="text" class="vlaninfo" value="'+network.vlan+'" disabled/>' +
+                          '</label>'+
+                        '</div>'+
+                      '</div>';
+              }
+
+              var trow = $('<div class="vcenter_network">' +
+                  '<div class="row">' +
+                    '<div class="large-10 columns">' +
+                      '<div class="large-12 columns">' +
+                        '<label>' +
+                          '<input type="checkbox" class="network_name" checked/> ' +
+                          network.name + '&emsp;<span style="color: #999">' + network.type + '</span>' + 
+                        '</label>' +
+                      '</div>'+
+                      '<div class="large-2 columns">'+
+                        '<label>' + tr("SIZE") +
+                          '<input type="text" class="netsize" value="255"/>' +
+                        '</label>' +
+                      '</div>'+
+                      '<div class="large-2 columns">'+
+                        '<label>' + tr("TYPE") +
+                          '<select class="type_select">'+
+                            '<option value="ETHER">eth</option>' +
+                            '<option value="IP4">ipv4</option>'+
+                            '<option value="IP6">ipv6</option>' + 
+                          '</select>' + 
+                        '</label>' +
+                      '</div>'+
+                      '<div class="net_options">' +
+                        '<div class="large-4 columns">'+
+                          '<label>' + tr("MAC") + 
+                            '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                          '</label>'+
+                        '</div>'+
+                      '</div>'+ 
+                      vlan_info +
+                      '<div class="large-12 columns vcenter_network_response">'+
+                      '</div>'+
+                    '</div>' +
+                    '<div class="large-2 columns vcenter_network_result">'+
+                    '</div>'+
+                  '</div>'+
+                '</div>').appendTo($(".content", opts.container))
+
+
+              $('.type_select', trow).on("change",function(){
+                  var network_context = $(this).closest(".vcenter_network");
+                  var type = $(this).val();
+
+                  var net_form_str = ''
+
+                  switch(type) {
+                      case 'ETHER':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                      case 'IP4':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("IP START") + 
+                                '<input type="text" class="four_ip_net"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                      case 'IP6':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-6 columns">'+
+                              '<label>' + tr("GLOBAL PREFIX") + 
+                                '<input type="text" class="six_global_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-6 columns">'+
+                              '<label>' + tr("ULA_PREFIX") + 
+                                '<input type="text" class="six_ula_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                  }
+
+                  $('.net_options', network_context).html(net_form_str);
+              });
+
+              $(".network_name", trow).data("network_name", netname)
+              $(".network_name", trow).data("one_network", network.one)
+            });
+          };
+        });
+      },
+      error: function(response){
+        opts.container.html("");
+        onError({}, OpenNebula.Error(response));
+      }
+  });
+
+  return false;
 }
 
 //The DOM is ready and the ready() from sunstone.js

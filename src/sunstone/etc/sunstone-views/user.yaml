@@ -5,6 +5,7 @@ enabled_tabs:
     system-tab: false
     users-tab: false
     groups-tab: false
+    vdcs-tab: false
     acls-tab: false
     vresources-tab: true
     vms-tab: true
@@ -25,6 +26,7 @@ enabled_tabs:
     doc-tab: false
     community-tab: false
     enterprise-tab: false
+    zones-tab: false
 autorefresh: true
 features:
     showback: true
@@ -35,16 +37,16 @@ tabs:
             Dashboard.refresh: false
             Sunstone.toggle_top: false
         widgets_three_per_row:
-            #- users
         widgets_two_per_row:
             - network
             - storage
             - user_quotas
             - group_quotas
-            #- hosts
             #- vms
         widgets_one_per_row:
             - vms
+            #- hosts
+            #- users
         widgets_one_footer:
             - accounting
     system-tab:
@@ -66,6 +68,7 @@ tabs:
             - 6         # Memory
             - 7         # CPU
             #- 8         # Group ID
+            #- 9         # Hidden User Data
         actions:
             User.refresh: true
             User.create_dialog: true
@@ -96,6 +99,27 @@ tabs:
             Group.create_dialog: true
             Group.quotas_dialog: true
             Group.delete: true
+            Group.edit_admins: true
+    vdcs-tab:
+        panel_tabs:
+            vdc_info_tab: true
+            vdc_groups_tab: true
+            vdc_resources_tab: true
+        table_columns:
+            - 0         # Checkbox
+            - 1         # ID
+            - 2         # Name
+            - 3         # Groups
+            - 4         # Clusters
+            - 5         # Hosts
+            - 6         # VNets
+            - 7         # Datastores
+        actions:
+            Vdc.refresh: true
+            Vdc.create_dialog: true
+            Vdc.update_dialog: true
+            Vdc.delete: true
+
     acls-tab:
         panel_tabs:
         table_columns:
@@ -138,6 +162,7 @@ tabs:
             - 9       # IPs
             #- 10      # Start Time
             - 11      # VNC
+            #- 12      # Hidden Template
         actions:
             VM.refresh: true
             VM.create_dialog: true
@@ -153,7 +178,6 @@ tabs:
             VM.resume: true
             VM.stop: true
             VM.recover: false
-            VM.boot: true
             VM.reboot: true
             VM.reboot_hard: true
             VM.poweroff: true
@@ -168,6 +192,7 @@ tabs:
             VM.attachdisk: true
             VM.detachdisk: true
             VM.saveas: true
+            VM.disk_snapshot_cancel: true
             VM.attachnic: true
             VM.detachnic: true
             VM.snapshot_create: true
@@ -189,6 +214,7 @@ tabs:
         actions:
             Template.refresh: true
             Template.create_dialog: true
+            Template.import_dialog: false
             Template.update_dialog: true
             Template.instantiate_vms: true
             Template.chown: false
@@ -325,7 +351,7 @@ tabs:
             #- 8         # TM
             #- 9         # DS
             #- 10        # Type
-
+            #- 11        # Status
         actions:
             Datastore.refresh: true
             Datastore.create_dialog: false
@@ -334,6 +360,8 @@ tabs:
             Datastore.chgrp: false
             Datastore.chmod: true
             Datastore.delete: false
+            Datastore.enable: false
+            Datastore.disable: false
     vnets-tab:
         panel_tabs:
             vnet_info_tab: true
@@ -353,6 +381,7 @@ tabs:
         actions:
             Network.refresh: true
             Network.create_dialog: false
+            Network.import_dialog: false
             Network.update_dialog: true
             Network.addtocluster: false
             Network.chown: false
@@ -414,7 +443,6 @@ tabs:
                 Role.suspend: true
                 Role.resume: true
                 Role.stop: true
-                Role.boot: true
                 Role.reboot: true
                 Role.reboot_hard: true
                 Role.poweroff: true
@@ -428,7 +456,6 @@ tabs:
                 RoleVM.suspend: true
                 RoleVM.resume: true
                 RoleVM.stop: true
-                RoleVM.boot: true
                 RoleVM.reboot: true
                 RoleVM.reboot_hard: true
                 RoleVM.poweroff: true
@@ -475,6 +502,18 @@ tabs:
             ServiceTemplate.chgrp: false
             ServiceTemplate.chmod: true
             ServiceTemplate.delete: true
+    zones-tab:
+        panel_tabs:
+            zone_info_tab: true
+        table_columns:
+            - 0         # Checkbox
+            - 1         # ID
+            - 2         # Name
+            - 3         # Endpoint
+        actions:
+            Zone.refresh: true
+            Zone.create_dialog: true
+            Zone.delete: true
     support-tab:
         panel_tabs:
             support_info_tab: true

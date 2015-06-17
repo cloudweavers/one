@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -414,9 +414,8 @@ bool SecurityGroup::isValidRule(const VectorAttribute * rule, string& error) con
     }
     else //Target is ANY or NETWORK_ID
     {
-        value = rule->vector_value("NETWORK_ID");
-
-        if (!value.empty() && rule->vector_value("NETWORK_ID", id) != 0)
+        if (rule->vector_value("NETWORK_ID", value) == 0 &&
+            rule->vector_value("NETWORK_ID", id) != 0)
         {
             error = "Wrong NETWORK_ID.";
             return false;

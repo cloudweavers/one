@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -93,6 +93,7 @@ var create_file_tmpl ='<div class="row">\
                </div>\
                <div class="row">\
                   <div id="files_file-uploader" class="large-12 columns text-center">\
+                    <label id="files_file-uploader-label" for="files_file-uploader-input"></label>\
                     <input id="files_file-uploader-input" type="file"/>\
                   </div>\
                </div>\
@@ -353,7 +354,7 @@ var files_tab = {
     content: '<div class="large-12 columns">\
       <div id="files_upload_progress_bars"></div>\
     </div>',
-    search_input: '<input id="file_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="file_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-folder-open"></i>&emsp;'+tr("Files & Kernels"),
     info_header: '<i class="fa fa-fw fa-folder-open"></i>&emsp;'+tr("File"),
     subheader: '<span class="total_files"/> <small>'+tr("TOTAL")+'</small>&emsp;\
@@ -541,7 +542,7 @@ function updateFileInfo(request,file){
                insert_extended_template_table(file_info.TEMPLATE,
                                                "File",
                                                file_info.ID,
-                                               "Attributes") +
+                                               tr("Attributes")) +
        '</div>\
      </div>'
     }
@@ -632,7 +633,7 @@ function setupCreateFileDialog(){
       $("#file_uploader").attr("disabled", "disabled");
     } else {
       var file_uploader = new Resumable({
-          target: '/upload_chunk',
+          target: 'upload_chunk',
           chunkSize: 10*1024*1024,
           maxFiles: 1,
           testChunks: false,
@@ -649,6 +650,9 @@ function setupCreateFileDialog(){
       file_uploader.on('fileAdded', function(file){
           fileName = file.fileName;
           file_input = fileName;
+          
+          $('#files_file-uploader-input',dialog).hide()
+          $("#files_file-uploader-label", dialog).html(file.fileName);
       });
 
       file_uploader.on('uploadStart', function() {
@@ -672,7 +676,7 @@ function setupCreateFileDialog(){
       file_uploader.on('fileSuccess', function(file) {
           $('div[id="files-'+fileName+'-info"]').text(tr('Registering in OpenNebula'));
           $.ajax({
-              url: '/upload',
+              url: 'upload',
               type: "POST",
               data: {
                   csrftoken: csrftoken,

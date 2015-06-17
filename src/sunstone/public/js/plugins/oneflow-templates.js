@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------ //
-// Copyright 2010-2014, C12G Labs S.L.                                      //
+// Copyright 2010-2015, C12G Labs S.L.                                      //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may  //
 // not use this file except in compliance with the License. You may obtain  //
@@ -64,6 +64,7 @@ var create_service_template_wizard_html = '\
                       </table>\
                 </div>\
             </div>'}) +
+    '<br>'+
     generateAdvancedSection({
         title: tr("Advanced Service Parameters"),
         html_id: "advanced_service_params",
@@ -122,24 +123,21 @@ var role_tab_content = '\
               '</label>\
               <input type="text" id="role_name" name="name" required/>\
     </div>\
-</div>\
-<div class="row">\
-    <div class="service_template_param service_role large-6 columns">\
-        <label for="vm_template">' + tr("VM template") +
-            '<span class="tip">'+ tr("Template associated to this role") +'</span>'+
-        '</label>\
-        <div id="vm_template">\
-        </div>\
-    </div>\
-    <div class="service_template_param service_role large-2 columns">\
+    <div class="service_template_param service_role large-2 columns end">\
         <label for="cardinality">' + tr("VMs") +
             '<span class="tip">'+ tr("Number of VMs to instantiate with this role") +'</span>'+
         '</label>\
         <input type="text" id="cardinality" name="cardinality" value="1" />\
     </div>\
-    <div class="large-2 columns">\
-    </div>\
-    <div class="large-2 columns">\
+</div>\
+<div class="row">\
+    <div class="service_template_param service_role small-12 columns">\
+        <label for="vm_template">' + tr("VM template") +
+            '<span class="tip">'+ tr("Template associated to this role") +'</span>'+
+        '</label>\
+        '+generateTemplateTableSelect("role_vm_template")+'\
+        <div id="vm_template">\
+        </div>\
     </div>\
 </div>\
 <div class="row">\
@@ -167,6 +165,7 @@ var role_tab_content = '\
     <div class="large-12 columns elasticity_accordion">\
     </div>\
 </div>\
+<br>\
 <div class="row">\
     <div class="large-12 columns advanced_role_accordion">\
     </div>\
@@ -403,7 +402,10 @@ var service_template_actions = {
     "ServiceTemplate.create_dialog" : {
         type : "custom",
         call: function(){
-          Sunstone.popUpFormPanel("create_service_template_form", "oneflow-templates", "create", false);
+          Sunstone.popUpFormPanel("create_service_template_form",
+            "oneflow-templates", "create", true, function(context){
+                $("input#service_name",context).focus();
+            });
         }
     },
 
@@ -621,7 +623,7 @@ var service_templates_tab = {
     buttons: service_template_buttons,
     tabClass: 'subTab',
     parentTab: 'oneflow-dashboard',
-    search_input: '<input id="service_templates_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="service_templates_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-file-o"></i>&emsp;'+tr("OneFlow - Templates"),
     info_header: '<i class="fa fa-fw fa-file-o"></i>&emsp;'+tr("OneFlow - Template"),
     subheader: '<span/> <small></small>&emsp;',
@@ -721,7 +723,7 @@ function updateServiceTemplateInfo(request,elem){
     $(".resource-info-header", $("#oneflow-templates")).html(elem_info.NAME);
 
     var network_configuration = "";
-    if (elem_info.TEMPLATE.BODY['custom_attrs']) {
+    if ( ! $.isEmptyObject( elem_info.TEMPLATE.BODY['custom_attrs'] ) ) {
         network_configuration +=
             '<table id="info_template_table" class="dataTable extended_table">\
                 <thead>\
@@ -1083,7 +1085,11 @@ function setup_policy_tab_content(policy_section, html_policy_id) {
 function setup_role_tab_content(role_section, html_role_id) {
     setupTips(role_section);
 
-    insertSelectOptions('div#vm_template', role_section, "Template", null, false);
+    var unique_id = "role_vm_template";
+    setupTemplateTableSelect(role_section, unique_id);
+    refreshTemplateTableSelect(role_section, unique_id);
+
+    $("input#selected_resource_id_"+unique_id, role_section).attr("required", "")
 
     $("#role_name", role_section).change(function(){
         $("#" + html_role_id +" #role_name_text").html($(this).val());
@@ -1482,7 +1488,7 @@ function generate_json_service_template_from_form(dialog) {
         var role = {};
         role['name'] = $('input[name="name"]', this).val();
         role['cardinality'] = $('input[name="cardinality"]', this).val();
-        role['vm_template'] = $('#vm_template .resource_list_select', this).val();
+        role['vm_template'] = retrieveTemplateTableSelect(this, "role_vm_template");
         role['shutdown_action'] = $('select[name="shutdown_action_role"]', this).val();
         role['parents'] = [];
         role['vm_template_contents'] = $(".vm_template_contents", this).val();
@@ -1554,8 +1560,11 @@ function generate_json_service_template_from_form(dialog) {
         name: name,
         deployment: deployment,
         description: description,
-        roles: roles,
-        custom_attrs: custom_attrs
+        roles: roles
+    }
+
+    if (!$.isEmptyObject(custom_attrs)){
+        obj['custom_attrs'] = custom_attrs
     }
 
     if (shutdown_action_service){
@@ -1582,7 +1591,7 @@ function fillUpUpdateServiceTemplateDialog(response, dialog){
     $("select[name='shutdown_action_service']", dialog).val(service_template.TEMPLATE.BODY.shutdown_action);
     $("input[name='ready_status_gate']", dialog).prop("checked",service_template.TEMPLATE.BODY.ready_status_gate || false);
 
-    if (service_template.TEMPLATE.BODY['custom_attrs']) {
+    if ( ! $.isEmptyObject( service_template.TEMPLATE.BODY['custom_attrs'] ) ) {
         $("a[href='#network_configuration_and_attributes']", dialog).trigger("click");
 
         $(".service_networks i.remove-tab", dialog).trigger("click");
@@ -1632,16 +1641,13 @@ function fillUpUpdateServiceTemplateDialog(response, dialog){
                     }
                 }
             });
+
+            $(".vm_template_contents", context).val(htmlDecode(value.vm_template_contents));
         }
 
         $("#cardinality", context).val(htmlDecode(value.cardinality));
 
-        // The vm_template select is already initialized, but we need to select
-        // the template retrived from the service_template. Since the initialization
-        // is async, we can't assume the .resource_list_select exists yet.
-        // Calling the initialization again with the correct init_val should
-        // use the cache anyway
-        insertSelectOptions('div#vm_template', context, "Template", value.vm_template, false);
+        selectTemplateTableSelect(context, "role_vm_template", {ids: value.vm_template});
 
         $("select[name='shutdown_action_role']", context).val(value.shutdown_action);
         $("#min_vms", context).val(htmlDecode(value.min_vms));

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -78,24 +78,6 @@ void VMTemplateInstantiate::request_execute(xmlrpc_c::paramList const& paramList
     rtmpl->get_permissions(perms);
 
     rtmpl->unlock();
-
-    // Check template for restricted attributes, only if owner is not oneadmin
-    if (perms.uid!=UserPool::ONEADMIN_ID && perms.gid!=GroupPool::ONEADMIN_ID)
-    {
-        if (tmpl->check(aname))
-        {
-            ostringstream oss;
-
-            oss << "VM Template includes a restricted attribute " << aname;
-
-            failure_response(AUTHORIZATION,
-                    authorization_error(oss.str(), att),
-                    att);
-
-            delete tmpl;
-            return;
-        }
-    }
 
     // Parse & merge user attributes (check if the request user is not oneadmin)
     if (!str_uattrs.empty())

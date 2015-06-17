@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -22,7 +22,7 @@ KEYS = [:MISC , :NET , :LVM , :ISCSI , :OVS , :XEN]
 
 CMDS = {
     :MISC  => %w(dd mkfs sync),
-    :NET   => %w(brctl ebtables iptables ip),
+    :NET   => %w(brctl ebtables iptables ip ipset),
     :LVM   => %w(lvcreate lvremove lvrename lvs vgdisplay),
     :ISCSI => %w(iscsiadm tgt-admin tgtadm),
     :OVS   => %w(ovs-ofctl ovs-vsctl),

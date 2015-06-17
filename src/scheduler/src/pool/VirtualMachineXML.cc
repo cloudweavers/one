@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -399,6 +399,30 @@ void VirtualMachineXML::log(const string &st)
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+bool VirtualMachineXML::clear_log()
+{
+    string st;
+
+    if (user_template == 0)
+    {
+        return false;
+    }
+
+    user_template->get("SCHED_MESSAGE", st);
+
+    if (st.empty())
+    {
+        return false;
+    }
+
+    user_template->erase("SCHED_MESSAGE");
+
+    return true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 int VirtualMachineXML::parse_action_name(string& action_st)
 {
     one_util::tolower(action_st);
@@ -412,7 +436,6 @@ int VirtualMachineXML::parse_action_name(string& action_st)
         && action_st != "stop"
         && action_st != "suspend"
         && action_st != "resume"
-        && action_st != "boot"
         && action_st != "delete"
         && action_st != "delete-recreate"
         && action_st != "reboot"
@@ -431,7 +454,7 @@ int VirtualMachineXML::parse_action_name(string& action_st)
 /* -------------------------------------------------------------------------- */
 
 bool VirtualMachineXML::test_image_datastore_capacity(
-    ImageDatastorePoolXML * img_dspool)
+    ImageDatastorePoolXML * img_dspool, string & error_msg) const
 {
     map<int,long long>::const_iterator ds_usage_it;
     DatastoreXML* ds;
@@ -440,29 +463,14 @@ bool VirtualMachineXML::test_image_datastore_capacity(
     {
         ds = img_dspool->get(ds_usage_it->first);
 
-        if (ds == 0) //Should never reach here
+        if (ds == 0 || !ds->test_capacity(ds_usage_it->second))
         {
             ostringstream oss;
 
-            oss << "Image Datastore " << ds_usage_it->first << " not found.";
+            oss << "Image Datastore " << ds->get_oid()
+                << " does not have enough capacity";
 
-            NebulaLog::log("SCHED",Log::INFO,oss);
-
-            return false;
-        }
-
-        if (!ds->test_capacity(ds_usage_it->second))
-        {
-            ostringstream oss;
-
-            oss << "VM " << oid
-                << ": Image Datastore " << ds_usage_it->first
-                << " does not have enough free storage.";
-
-            NebulaLog::log("SCHED",Log::INFO,oss);
-
-            log(oss.str());
-
+            error_msg = oss.str();
             return false;
         }
     }

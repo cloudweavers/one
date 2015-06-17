@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -21,6 +21,7 @@
 #include "ImageTemplate.h"
 #include "NebulaLog.h"
 #include "ObjectCollection.h"
+#include "Snapshots.h"
 
 using namespace std;
 
@@ -82,6 +83,8 @@ public:
         RBD_CDROM     = 4, /** < CEPH RBD CDROM disk */
         GLUSTER       = 5, /** < Gluster Block Device */
         GLUSTER_CDROM = 6, /** < Gluster CDROM Device Device */
+        SHEEPDOG      = 7, /** < Sheepdog Block Device */
+        SHEEPDOG_CDROM = 8, /** < Sheepdog CDROM Device Device */
         NONE          = 255 /** < No disk type, error situation */
     };
 
@@ -94,14 +97,16 @@ public:
     {
         switch (ob)
         {
-            case FILE:              return "FILE" ; break;
-            case CD_ROM:            return "CDROM" ; break;
-            case BLOCK:             return "BLOCK" ; break;
-            case RBD:               return "RBD" ; break;
-            case RBD_CDROM:         return "RBD_CDROM" ; break;
-            case GLUSTER:           return "GLUSTER" ; break;
-            case GLUSTER_CDROM:     return "GLUSTER_CDROM" ; break;
-            default:                return "";
+            case FILE:           return "FILE" ; break;
+            case CD_ROM:         return "CDROM" ; break;
+            case BLOCK:          return "BLOCK" ; break;
+            case RBD:            return "RBD" ; break;
+            case RBD_CDROM:      return "RBD_CDROM" ; break;
+            case GLUSTER:        return "GLUSTER" ; break;
+            case GLUSTER_CDROM:  return "GLUSTER_CDROM" ; break;
+            case SHEEPDOG:	     return "SHEEPDOG" ; break;
+            case SHEEPDOG_CDROM: return "SHEEPDOG_CDROM" ; break;
+            default:             return "";
         }
     };
 
@@ -173,7 +178,7 @@ public:
      *  Returns true if the image is persistent
      *     @return true if the image is persistent
      */
-    bool isPersistent() const
+    bool is_persistent() const
     {
         return (persistent_img == 1);
     };
@@ -213,6 +218,7 @@ public:
     {
         return size_mb;
     }
+
 
     /**
      *  Sets the source path of the image
@@ -340,66 +346,16 @@ public:
      * @param _type the new type. It will be transformed to upper case
      * @return 0 on success, -1 otherwise
      */
-    int set_type(string& _type);
-
-    /**
-     *  Check if the image can be used by other users
-     *  @return true if group or others can access the image
-     */
-    bool isPublic()
-    {
-       return (group_u == 1 || other_u == 1);
-    }
+    int set_type(string& _type, string& error);
 
     /**
      *  Check if the image is used for saving_as a current one
      *  @return true if the image will be used to save an existing image.
      */
-    bool isSaving()
+    bool is_saving()
     {
-        ImageTemplate * it = static_cast<ImageTemplate *>(obj_template);
-
-        return it->is_saving();
+        return (static_cast<ImageTemplate *>(obj_template))->is_saving();
     }
-
-    /**
-     *  Check if the image is a hot snapshot
-     *  @return true if image is a hot snapshot
-     */
-    bool isHot()
-    {
-        ImageTemplate * it = static_cast<ImageTemplate *>(obj_template);
-
-        return it->is_saving_hot();
-    }
-
-    /**
-     *  Set permissions for the Image. Extends the PoolSQLObject method
-     *  by checking the persistent state of the image.
-     */
-    int set_permissions(int _owner_u,
-                        int _owner_m,
-                        int _owner_a,
-                        int _group_u,
-                        int _group_m,
-                        int _group_a,
-                        int _other_u,
-                        int _other_m,
-                        int _other_a,
-                        string& error_str)
-    {
-        if ( isPersistent() && (_group_u == 1 || _other_u == 1) )
-        {
-            error_str = "Image cannot be public and persistent.";
-
-            return -1;
-        }
-
-        return PoolObjectSQL::set_permissions(_owner_u, _owner_m, _owner_a,
-                                              _group_u, _group_m, _group_a,
-                                              _other_u, _other_m, _other_a,
-                                              error_str);
-    };
 
     /**
      *  Set/Unset an image as persistent
@@ -412,13 +368,20 @@ public:
     {
         ostringstream oss;
 
+        if ((snapshots.size() > 0) && !persis)
+        {
+           error_str = "Image has snapshots.";
+           return -1;
+        }
+
         switch(state)
         {
             case USED:
             case CLONE:
             case USED_PERS:
-                goto error_state;
-                break;
+                oss << "Image cannot be in state " << state_to_str(state) <<".";
+                error_str = oss.str();
+                return -1;
 
             case INIT:
             case READY:
@@ -428,11 +391,6 @@ public:
             case DELETE:
                 if (persis == true)
                 {
-                    if ( isPublic() )
-                    {
-                        goto error_public;
-                    }
-
                     persistent_img = 1;
                 }
                 else
@@ -444,20 +402,6 @@ public:
         }
 
         return 0;
-
-    error_state:
-        oss << "Image cannot be in state " << state_to_str(state) << ".";
-        error_str = oss.str();
-
-        goto error_common;
-
-    error_public:
-        error_str = "Image cannot be public and persistent.";
-        goto error_common;
-
-    error_common:
-        return -1;
-
     }
 
     /**
@@ -518,6 +462,60 @@ public:
      * @return Pointer to the new tempalte 0 in case of success
      */
     ImageTemplate * clone_template(const string& new_name) const;
+
+    /* ---------------------------------------------------------------------- */
+    /* Snapshots functions                                                    */
+    /* ---------------------------------------------------------------------- */
+    /**
+     *  Return the snapshot list of this image
+     */
+    const Snapshots& get_snapshots() const
+    {
+        return snapshots;
+    };
+
+    /**
+     *  Clear all the snapshots in the list
+     */
+    void clear_snapshots()
+    {
+        snapshots.clear();
+    }
+
+    /**
+     *  Set the snapshots for this image
+     *  @param snapshot list
+     */
+    void set_snapshots(const Snapshots& s)
+    {
+        snapshots = s;
+        snapshots.clear_disk_id();
+    };
+
+    void delete_snapshot(int snap_id)
+    {
+        snapshots.delete_snapshot(snap_id);
+    };
+
+    void revert_snapshot(int snap_id)
+    {
+        snapshots.active_snapshot(snap_id);
+    };
+
+    void set_target_snapshot(int snap_id)
+    {
+        target_snapshot = snap_id;
+    };
+
+    int get_target_snapshot()
+    {
+        return target_snapshot;
+    };
+
+    void clear_target_snapshot()
+    {
+        target_snapshot = -1;
+    };
 
 private:
 
@@ -611,6 +609,16 @@ private:
      *  Stores a collection with the Images cloning this image
      */
     ObjectCollection img_clone_collection;
+
+    /**
+     * Snapshot list for this image
+     */
+    Snapshots snapshots;
+
+    /**
+     * ID of the snapshot being processed (if any)
+     */
+    int target_snapshot;
 
     // *************************************************************************
     // DataBase implementation (Private)

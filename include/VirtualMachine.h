@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -32,6 +32,7 @@
 using namespace std;
 
 class AuthRequest;
+class Snapshots;
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -51,15 +52,15 @@ public:
      */
     enum VmState
     {
-        INIT      = 0,
-        PENDING   = 1,
-        HOLD      = 2,
-        ACTIVE    = 3,
-        STOPPED   = 4,
-        SUSPENDED = 5,
-        DONE      = 6,
-        FAILED    = 7,
-        POWEROFF  = 8,
+        INIT       = 0,
+        PENDING    = 1,
+        HOLD       = 2,
+        ACTIVE     = 3,
+        STOPPED    = 4,
+        SUSPENDED  = 5,
+        DONE       = 6,
+        //FAILED   = 7,
+        POWEROFF   = 8,
         UNDEPLOYED = 9
     };
 
@@ -74,7 +75,6 @@ public:
         else if ( st == "STOPPED" ) { state = STOPPED; }
         else if ( st == "SUSPENDED" ) { state = SUSPENDED; }
         else if ( st == "DONE" ) { state = DONE; }
-        else if ( st == "FAILED" ) { state = FAILED; }
         else if ( st == "POWEROFF" ) { state = POWEROFF; }
         else if ( st == "UNDEPLOYED" ) { state = UNDEPLOYED; }
         else {return -1;}
@@ -93,7 +93,6 @@ public:
             case STOPPED   : st = "STOPPED"; break;
             case SUSPENDED : st = "SUSPENDED"; break;
             case DONE      : st = "DONE"; break;
-            case FAILED    : st = "FAILED"; break;
             case POWEROFF  : st = "POWEROFF"; break;
             case UNDEPLOYED: st = "UNDEPLOYED"; break;
         }
@@ -119,8 +118,8 @@ public:
         EPILOG_STOP         = 10,
         EPILOG              = 11,
         SHUTDOWN            = 12,
-        CANCEL              = 13,
-        FAILURE             = 14,
+        //CANCEL            = 13,
+        //FAILURE           = 14,
         CLEANUP_RESUBMIT    = 15,
         UNKNOWN             = 16,
         HOTPLUG             = 17,
@@ -138,7 +137,28 @@ public:
         SHUTDOWN_UNDEPLOY   = 29,
         EPILOG_UNDEPLOY     = 30,
         PROLOG_UNDEPLOY     = 31,
-        BOOT_UNDEPLOY       = 32
+        BOOT_UNDEPLOY       = 32,
+        HOTPLUG_PROLOG_POWEROFF = 33,
+        HOTPLUG_EPILOG_POWEROFF = 34,
+        BOOT_MIGRATE            = 35,
+        BOOT_FAILURE            = 36,
+        BOOT_MIGRATE_FAILURE    = 37,
+        PROLOG_MIGRATE_FAILURE  = 38,
+        PROLOG_FAILURE          = 39,
+        EPILOG_FAILURE          = 40,
+        EPILOG_STOP_FAILURE     = 41,
+        EPILOG_UNDEPLOY_FAILURE = 42,
+        PROLOG_MIGRATE_POWEROFF = 43,
+        PROLOG_MIGRATE_POWEROFF_FAILURE = 44,
+        PROLOG_MIGRATE_SUSPEND          = 45,
+        PROLOG_MIGRATE_SUSPEND_FAILURE  = 46,
+        BOOT_UNDEPLOY_FAILURE   = 47,
+        BOOT_STOPPED_FAILURE    = 48,
+        PROLOG_RESUME_FAILURE   = 49,
+        PROLOG_UNDEPLOY_FAILURE = 50,
+        DISK_SNAPSHOT_POWEROFF  = 51,
+        DISK_SNAPSHOT_REVERT_POWEROFF = 52,
+        DISK_SNAPSHOT_DELETE_POWEROFF = 53
     };
 
     static int lcm_state_from_str(string& st, LcmState& state)
@@ -158,8 +178,6 @@ public:
         else if ( st == "EPILOG_STOP") { state = EPILOG_STOP; }
         else if ( st == "EPILOG") { state = EPILOG; }
         else if ( st == "SHUTDOWN") { state = SHUTDOWN; }
-        else if ( st == "CANCEL") { state = CANCEL; }
-        else if ( st == "FAILURE") { state = FAILURE; }
         else if ( st == "CLEANUP_RESUBMIT") { state = CLEANUP_RESUBMIT; }
         else if ( st == "UNKNOWN") { state = UNKNOWN; }
         else if ( st == "HOTPLUG") { state = HOTPLUG; }
@@ -178,12 +196,33 @@ public:
         else if ( st == "EPILOG_UNDEPLOY") { state = EPILOG_UNDEPLOY; }
         else if ( st == "PROLOG_UNDEPLOY") { state = PROLOG_UNDEPLOY; }
         else if ( st == "BOOT_UNDEPLOY") { state = BOOT_UNDEPLOY; }
+        else if ( st == "HOTPLUG_PROLOG_POWEROFF") { state = HOTPLUG_PROLOG_POWEROFF; }
+        else if ( st == "HOTPLUG_EPILOG_POWEROFF") { state = HOTPLUG_EPILOG_POWEROFF; }
+        else if ( st == "BOOT_MIGRATE") { state = BOOT_MIGRATE; }
+        else if ( st == "BOOT_FAILURE") { state = BOOT_FAILURE; }
+        else if ( st == "BOOT_MIGRATE_FAILURE") { state = BOOT_MIGRATE_FAILURE; }
+        else if ( st == "PROLOG_MIGRATE_FAILURE") { state = PROLOG_MIGRATE_FAILURE; }
+        else if ( st == "PROLOG_FAILURE") { state = PROLOG_FAILURE; }
+        else if ( st == "EPILOG_FAILURE") { state = EPILOG_FAILURE; }
+        else if ( st == "EPILOG_STOP_FAILURE") { state = EPILOG_STOP_FAILURE; }
+        else if ( st == "EPILOG_UNDEPLOY_FAILURE") { state = EPILOG_UNDEPLOY_FAILURE; }
+        else if ( st == "PROLOG_MIGRATE_POWEROFF") { state = PROLOG_MIGRATE_POWEROFF;}
+        else if ( st == "PROLOG_MIGRATE_POWEROFF_FAILURE") { state = PROLOG_MIGRATE_POWEROFF_FAILURE;}
+        else if ( st == "PROLOG_MIGRATE_SUSPEND") { state = PROLOG_MIGRATE_SUSPEND;}
+        else if ( st == "PROLOG_MIGRATE_SUSPEND_FAILURE") { state = PROLOG_MIGRATE_SUSPEND_FAILURE;}
+        else if ( st == "BOOT_STOPPED_FAILURE") { state = BOOT_STOPPED_FAILURE; }
+        else if ( st == "BOOT_UNDEPLOY_FAILURE") { state = BOOT_UNDEPLOY_FAILURE; }
+        else if ( st == "PROLOG_RESUME_FAILURE") { state = PROLOG_RESUME_FAILURE; }
+        else if ( st == "PROLOG_UNDEPLOY_FAILURE") { state = PROLOG_UNDEPLOY_FAILURE; }
+        else if ( st == "DISK_SNAPSHOT_POWEROFF") { state = DISK_SNAPSHOT_POWEROFF; }
+        else if ( st == "DISK_SNAPSHOT_REVERT_POWEROFF") { state = DISK_SNAPSHOT_REVERT_POWEROFF; }
+        else if ( st == "DISK_SNAPSHOT_DELETE_POWEROFF") { state = DISK_SNAPSHOT_DELETE_POWEROFF; }
         else {return -1;}
 
         return 0;
     }
 
-    static string& lcm_state_to_str(string& st, LcmState& state)
+    static string& lcm_state_to_str(string& st, LcmState state)
     {
         switch (state)
         {
@@ -200,8 +239,6 @@ public:
             case EPILOG_STOP: st = "EPILOG_STOP"; break;
             case EPILOG: st = "EPILOG"; break;
             case SHUTDOWN: st = "SHUTDOWN"; break;
-            case CANCEL: st = "CANCEL"; break;
-            case FAILURE: st = "FAILURE"; break;
             case CLEANUP_RESUBMIT: st = "CLEANUP_RESUBMIT"; break;
             case UNKNOWN: st = "UNKNOWN"; break;
             case HOTPLUG: st = "HOTPLUG"; break;
@@ -220,9 +257,47 @@ public:
             case EPILOG_UNDEPLOY: st = "EPILOG_UNDEPLOY"; break;
             case PROLOG_UNDEPLOY: st = "PROLOG_UNDEPLOY"; break;
             case BOOT_UNDEPLOY: st = "BOOT_UNDEPLOY"; break;
+            case HOTPLUG_PROLOG_POWEROFF: st = "HOTPLUG_PROLOG_POWEROFF"; break;
+            case HOTPLUG_EPILOG_POWEROFF: st = "HOTPLUG_EPILOG_POWEROFF"; break;
+            case BOOT_MIGRATE: st = "BOOT_MIGRATE"; break;
+            case BOOT_FAILURE: st = "BOOT_FAILURE"; break;
+            case BOOT_MIGRATE_FAILURE: st = "BOOT_MIGRATE_FAILURE"; break;
+            case PROLOG_MIGRATE_FAILURE: st = "PROLOG_MIGRATE_FAILURE"; break;
+            case PROLOG_FAILURE: st = "PROLOG_FAILURE"; break;
+            case EPILOG_FAILURE: st = "EPILOG_FAILURE"; break;
+            case EPILOG_STOP_FAILURE: st = "EPILOG_STOP_FAILURE"; break;
+            case EPILOG_UNDEPLOY_FAILURE: st = "EPILOG_UNDEPLOY_FAILURE"; break;
+            case PROLOG_MIGRATE_POWEROFF: st = "PROLOG_MIGRATE_POWEROFF"; break;
+            case PROLOG_MIGRATE_POWEROFF_FAILURE: st = "PROLOG_MIGRATE_POWEROFF_FAILURE"; break;
+            case PROLOG_MIGRATE_SUSPEND: st = "PROLOG_MIGRATE_SUSPEND"; break;
+            case PROLOG_MIGRATE_SUSPEND_FAILURE: st = "PROLOG_MIGRATE_SUSPEND_FAILURE"; break;
+            case BOOT_STOPPED_FAILURE: st = "BOOT_STOPPED_FAILURE"; break;
+            case BOOT_UNDEPLOY_FAILURE: st = "BOOT_UNDEPLOY_FAILURE"; break;
+            case PROLOG_RESUME_FAILURE: st = "PROLOG_RESUME_FAILURE"; break;
+            case PROLOG_UNDEPLOY_FAILURE: st = "PROLOG_UNDEPLOY_FAILURE"; break;
+            case DISK_SNAPSHOT_POWEROFF: st = "DISK_SNAPSHOT_POWEROFF"; break;
+            case DISK_SNAPSHOT_REVERT_POWEROFF: st = "DISK_SNAPSHOT_REVERT_POWEROFF"; break;
+            case DISK_SNAPSHOT_DELETE_POWEROFF: st = "DISK_SNAPSHOT_DELETE_POWEROFF"; break;
         }
 
         return st;
+    }
+
+    /**
+     * Returns the VM state to string, using the lcm state if the current state
+     * is ACTIVE.
+     * @return the state sting
+     */
+    string state_str()
+    {
+		string st;
+
+        if (state == ACTIVE)
+        {
+            return lcm_state_to_str(st, lcm_state);
+        }
+
+        return vm_state_to_str(st, state);
     }
 
     // -------------------------------------------------------------------------
@@ -257,6 +332,18 @@ public:
         {
             _log->log(module,type,message);
         }
+    };
+
+    /**
+     *  writes a log message in vm.log. The class lock should be locked and
+     *  the VM MUST BE obtained through the VirtualMachinePool get() method.
+     */
+    void log(
+        const char *            module,
+        const Log::MessageType  type,
+        const string&           message) const
+    {
+        log(module, type, message.c_str());
     };
 
     /**
@@ -304,7 +391,8 @@ public:
     };
 
     /**
-     *  Updates VM dynamic information (usage counters), and updates last_poll
+     *  Updates VM dynamic information (usage counters), and updates last_poll,
+     *  and copies it to history record for acct.
      *   @param _memory Kilobytes used by the VM (total)
      *   @param _cpu used by the VM (rate)
      *   @param _net_tx transmitted bytes (total)
@@ -316,6 +404,17 @@ public:
         const long long _net_tx,
         const long long _net_rx,
         const map<string, string> &custom);
+
+    /**
+     *  Clears the VM monitor information: usage counters, last_poll,
+     *  custom attributes, and copies it to the history record for acct.
+     */
+    void reset_info()
+    {
+        map<string,string> empty;
+
+        update_info(0, 0, -1, -1, empty);
+    }
 
     /**
      *  Returns the deployment ID
@@ -392,6 +491,16 @@ public:
     {
         return history->rsystem_dir;
     }
+
+    /**
+     *  Returns the remote VM directory for the previous host.
+     *  The hasPreviousHistory() function MUST be called before this one.
+     *    @return the remote system directory for the VM
+     */
+    const string & get_previous_remote_system_dir() const
+    {
+        return previous_history->rsystem_dir;
+    };
 
     /**
      *  Returns the local VM directory. The VM local dir is in the form:
@@ -603,6 +712,16 @@ public:
     const string & get_checkpoint_file() const
     {
         return history->checkpoint_file;
+    };
+
+    /**
+     *  Returns the checkpoint filename for the previous host.
+     *  The hasPreviousHistory() function MUST be called before this one.
+     *    @return the checkpoint filename
+     */
+    const string & get_previous_checkpoint_file() const
+    {
+        return previous_history->checkpoint_file;
     };
 
     /**
@@ -958,6 +1077,11 @@ public:
         return state;
     };
 
+    VmState get_prev_state() const
+    {
+        return prev_state;
+    };
+
     /**
      *  Returns the VM state (life-cycle Manager)
      *    @return the VM state
@@ -967,13 +1091,22 @@ public:
         return lcm_state;
     };
 
+    LcmState get_prev_lcm_state() const
+    {
+        return prev_lcm_state;
+    };
+
     /**
      *  Sets VM state
      *    @param s state
      */
     void set_state(VmState s)
     {
+        string st;
+
         state = s;
+
+        log("VM", Log::INFO, "New state is " + vm_state_to_str(st, s));
     };
 
     /**
@@ -982,8 +1115,30 @@ public:
      */
     void set_state(LcmState s)
     {
+        string st;
+
         lcm_state = s;
+
+        log("VM", Log::INFO, "New LCM state is " + lcm_state_to_str(st, s));
     };
+
+    /**
+     *  Sets the previous state to the current one
+     */
+    void set_prev_state()
+    {
+        prev_state     = state;
+        prev_lcm_state = lcm_state;
+    };
+
+    /**
+     *  Test if the VM has changed state since last time prev state was set
+     *    @return true if VM changed state
+     */
+    bool has_changed_state()
+    {
+        return (prev_lcm_state != lcm_state || prev_state != state);
+    }
 
     /**
      *  Sets the re-scheduling flag
@@ -1086,6 +1241,11 @@ public:
     static bool isVolatile(const Template * tmpl);
 
     /**
+     *  Check if the themplate is for an imported VM
+     */
+    bool isImported() const;
+
+    /**
      *  Return the total SIZE of volatile disks
      */
     static long long get_volatile_disk_size(Template * tmpl);
@@ -1110,69 +1270,56 @@ public:
     int  generate_context(string &files, int &disk_id, string& token_password);
 
     // -------------------------------------------------------------------------
-    // Datastore related functions
+    // "Save as" Disk related functions (save_as hot)
     // -------------------------------------------------------------------------
     /**
-     *  Gest the associated image to the given disk_id
+     *  Mark the disk that is going to be "save as"
      *    @param disk_id of the VM
-     *    @param hot is this a save_as hot operation
+     *    @param snap_id of the disk to save, -1 to select the active snapshot
      *    @param err_str describing the error
-     *    @return -1 if the image cannot saveas
+     *    @return -1 if the image cannot saveas or image_id of current disk
      */
-    int get_image_from_disk(int disk_id, bool hot, string& err_str);
+    int set_saveas_disk(int disk_id, int snap_id, string& err_str);
 
     /**
-     *  Sets the corresponding SAVE_AS state.
+     *  Set save attributes for the disk
      *    @param  disk_id Index of the disk to save
-     *    @param hot is this a save_as hot operation
-     *    @return 0 if the VM can be saved as
+     *    @param  source to save the disk
+     *    @param  img_id ID of the image this disk will be saved to
      */
-     int set_saveas_state(int disk_id, bool hot);
+    int set_saveas_disk(int disk_id, const string& source, int img_id);
 
     /**
-     *  Clears the SAVE_AS state, moving the VM to the original state.
-     *    @param  disk_id Index of the disk to save
-     *    @param hot is this a save_as hot operation
-     *    @return 0 if the VM was in a SAVE_AS state
+     *  Sets the corresponding state to save the disk.
+     *    @return 0 if the VM can be saved
      */
-     int clear_saveas_state(int disk_id, bool hot);
+    int set_saveas_state();
 
     /**
-     *  Set the SAVE_AS attribute for the "disk_id"th disk.
-     *    @param  disk_id Index of the disk to save
-     *    @param  source to save the disk (SAVE_AS_SOURCE)
-     *    @param  img_id ID of the image this disk will be saved to (SAVE_AS).
+     *  Clears the save state, moving the VM to the original state.
+     *    @return 0 if the VM was in an saveas state
      */
-    int save_disk(int disk_id,
-                  const string& source,
-                  int img_id);
+    int clear_saveas_state();
 
     /**
-     *  Set the SAVE_AS attribute for the "disk_id"th disk.
-     *    @param  disk_id Index of the disk to save
-     *    @param  source to save the disk (SAVE_AS_SOURCE)
-     *    @param  img_id ID of the image this disk will be saved to (SAVE_AS).
+     * Clears the SAVE_AS_* attributes of the disk being saved as
+     *    @return the ID of the image this disk will be saved to or -1 if it
+     *    is not found.
      */
-    int save_disk_hot(int disk_id,
-                      const string& source,
-                      int img_id);
+    int clear_saveas_disk();
+
     /**
      * Get the original image id of the disk. It also checks that the disk can
      * be saved_as.
      *    @param  disk_id Index of the disk to save
-     *    @param  error_str describes the error
+     *    @param  source of the image to save the disk to
+     *    @param  image_id of the image to save the disk to
+     *    @param  tm_mad in use by the disk
+     *    @param  ds_id of the datastore in use by the disk
      *    @return -1 if failure
      */
-    int get_saveas_disk_hot(int& disk_id, string& source, int& image_id);
-
-    /**
-     * Clears the save_as attributes of the disk being (hot) saved as
-     *
-     *    @param  img_id ID of the image this disk will be saved to. Can be
-     *    -1 if it is not found
-     *    @return 0 if a disk with (HOTPLUG_)SAVE_AS was cleaned
-     */
-    int cancel_saveas_disk(int& image_id);
+    int get_saveas_disk(int& disk_id, string& source, int& image_id,
+            string& snap_id, string& tm_mad, string& ds_id);
 
     // ------------------------------------------------------------------------
     // Authorization related functions
@@ -1225,6 +1372,7 @@ public:
                             int                      max_disk_id,
                             int                      uid,
                             int&                     image_id,
+                            Snapshots **             snap,
                             string&                  error_str);
     /**
      * Returns the disk that is waiting for an attachment action
@@ -1243,18 +1391,27 @@ public:
      *
      * @return the DISK or 0 if no disk was deleted
      */
-    VectorAttribute * delete_attach_disk();
+    VectorAttribute * delete_attach_disk(Snapshots **snap);
 
     /**
      *  Adds a new disk to the virtual machine template. The disk should be
      *  generated by the build_attach_disk
      *    @param new_disk must be allocated in the heap
+     *    @param snap list of snapshots associated to the disk
      */
-    void set_attach_disk(VectorAttribute * new_disk)
+    void set_attach_disk(VectorAttribute * new_disk, Snapshots * snap)
     {
         new_disk->replace("ATTACH", "YES");
 
         obj_template->set(new_disk);
+
+        if (snap != 0)
+        {
+            int disk_id;
+
+            new_disk->vector_value("DISK_ID", disk_id);
+            snapshots.insert(pair<int, Snapshots *>(disk_id, snap));
+        }
     }
 
     /**
@@ -1332,6 +1489,64 @@ public:
      */
     int set_attach_nic(int nic_id);
 
+    // ------------------------------------------------------------------------
+    // Snapshot related functions
+    // ------------------------------------------------------------------------
+
+    /**
+     *  Return the snapshot list for the disk
+     *    @param disk_id of the disk
+     *    @param error if any
+     *    @return pointer to Snapshots or 0 if not found
+     */
+    const Snapshots * get_disk_snapshots(int did, string& err) const;
+
+    /**
+     *  Creates a new snapshot of the given disk
+     *    @param disk_id of the disk
+     *    @param tag a description for this snapshot
+     *    @param error if any
+     *    @return the id of the new snapshot or -1 if error
+     */
+    int new_disk_snapshot(int disk_id, const string& tag, string& error);
+
+    /**
+     *  Sets the snap_id as active, the VM will boot from it next time
+     *    @param disk_id of the disk
+     *    @param snap_id of the snapshot
+     *    @param error if any
+     *    @return -1 if error
+     */
+    int revert_disk_snapshot(int disk_id, int snap_id);
+
+    /**
+     *  Deletes the snap_id from the list, test_delete_disk_snapshot *MUST* be
+     *  called before actually deleting the snapshot.
+     *    @param disk_id of the disk
+     *    @param snap_id of the snapshot
+     */
+    void delete_disk_snapshot(int disk_id, int snap_id);
+
+    /**
+     *  Get information about the disk to take the snapshot from
+     *    @param ds_id id of the datastore
+     *    @param tm_mad used by the datastore
+     *    @param disk_id of the disk
+     *    @param snap_id of the snapshot
+     */
+    int get_snapshot_disk(string& ds_id, string& tm_mad, string& disk_id,
+            string& snap_id);
+    /**
+     *  Unset the current disk being snapshotted (reverted...)
+     */
+    void clear_snapshot_disk();
+
+    /**
+     *  Set the disk as being snapshotted (reverted...)
+     *    @param disk_id of the disk
+     *    @param snap_id of the target snap_id
+     */
+    int set_snapshot_disk(int disk_id, int snap_id);
 
     // ------------------------------------------------------------------------
     // Snapshot related functions
@@ -1419,9 +1634,19 @@ private:
     VmState     state;
 
     /**
+     *  Previous state og the virtual machine, to trigger state hooks
+     */
+    VmState     prev_state;
+
+    /**
      *  The state of the virtual machine (in the Life-cycle Manager).
      */
     LcmState    lcm_state;
+
+    /**
+     *  Previous state og the virtual machine, to trigger state hooks
+     */
+    LcmState    prev_lcm_state;
 
     /**
      *  Marks the VM as to be re-scheduled
@@ -1477,6 +1702,11 @@ private:
      *  Complete set of history records for the VM
      */
     vector<History *> history_records;
+
+    /**
+     *  Snapshots for each disk
+     */
+    map<int, Snapshots *> snapshots;
 
     // -------------------------------------------------------------------------
     // Logging & Dirs
@@ -1625,6 +1855,34 @@ private:
     int parse_defaults(string& error_str);
 
     /**
+     * Known attributes for network contextualization rendered as:
+     *   ETH_<nicid>_<context[0]> = $NETWORK[context[1], vnet_name]
+     *
+     * The context[1] values in the map are searched in the NIC and
+     * if not found in the AR and VNET. They can be also set in the
+     * CONTEXT section it self using full name (ETH_).
+     *
+     * IPv4 context variables:
+     *   {"IP", "IP"},
+     *   {"MAC", "MAC"},
+     *   {"MASK", "NETWORK_MASK"},
+     *   {"NETWORK", "NETWORK_ADDRESS"},
+     *   {"GATEWAY", "GATEWAY"},
+     *   {"DNS", "DNS"},
+     *   {"SEARCH_DOMAIN", "SEARCH_DOMAIN"}
+     *
+     * IPv6 context:
+     *   {"IP6", "IP6_GLOBAL"},
+     *   {"GATEWAY6", "GATEWAY6"},
+     *   {"CONTEXT_FORCE_IPV4", "CONTEXT_FORCE_IPV4"}
+     */
+    static const char* NETWORK_CONTEXT[][2];
+    static const int   NUM_NETWORK_CONTEXT;
+
+    static const char* NETWORK6_CONTEXT[][2];
+    static const int   NUM_NETWORK6_CONTEXT;
+
+    /**
      *  Parse the "CONTEXT" attribute of the template by substituting
      *  $VARIABLE, $VARIABLE[ATTR] and $VARIABLE[ATTR, ATTR = VALUE]
      *    @param error_str Returns the error reason, if any
@@ -1723,6 +1981,19 @@ private:
      */
     int get_disk_images(string &error_str);
 
+    /**
+     *  Return the VectorAttribute representation of a disk
+     *    @param disk_id of the disk
+     *    @return pointer to the VectorAttribute
+     */
+    VectorAttribute* get_disk(int disk_id)
+    {
+        return const_cast<VectorAttribute *>(
+                static_cast<const VirtualMachine&>(*this).get_disk(disk_id));
+    };
+
+    const VectorAttribute* get_disk(int disk_id) const;
+
 protected:
 
     //**************************************************************************
@@ -1797,11 +2068,6 @@ protected:
         return -1;
     }
 
-    // *************************************************************************
-    // Helpers
-    // *************************************************************************
-
-    VectorAttribute* get_disk(int disk_id);
 };
 
 #endif /*VIRTUAL_MACHINE_H_*/

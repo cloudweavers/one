@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------ //
-// Copyright 2010-2014, C12G Labs S.L.                                      //
+// Copyright 2010-2015, C12G Labs S.L.                                      //
 //                                                                          //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may  //
 // not use this file except in compliance with the License. You may obtain  //
@@ -242,7 +242,7 @@ var support_tab = {
         </tbody>\
       </table>',
     buttons: support_buttons,
-    search_input: '<input id="support_search" type="text" placeholder="Search" />',
+    search_input: '<input id="support_search" type="search" placeholder="Search" />',
     list_header: '<i class="fa fa-fw fa-support"></i> Commercial Support Requests',
     info_header: '<i class="fa fa-fw fa-support"></i> Commercial Support Request',
     subheader: '<div class="row text-left support_connect">'+
@@ -291,7 +291,7 @@ var support_tab = {
       '<br>'+
       '<div class="row">'+
         '<div class="large-6 columns">'+
-          '<a href="http://docs.opennebula.org/4.10/" target="_blank">'+
+          '<a href="http://docs.opennebula.org/4.12/" target="_blank">'+
             '<span class="fa-stack fa-2x" style="color: #cfcfcf;">'+
                '<i class="fa fa-circle fa-stack-2x"></i>'+
                '<i class="fa fa-book fa-stack-1x fa-inverse"></i>'+
@@ -361,7 +361,7 @@ function setup_upload_support_file_dialog() {
     $(".upload_support_file_form_button").attr("disabled", "disabled");
   } else {
     var uploader = new Resumable({
-        target: '/upload_chunk',
+        target: 'upload_chunk',
         chunkSize: 10*1024*1024,
         maxFiles: 1,
         testChunks: false,
@@ -403,7 +403,7 @@ function setup_upload_support_file_dialog() {
     uploader.on('fileSuccess', function(file) {
         $('div[id="'+fileName+'-info"]').text(tr('Registering in OpenNebula'));
         $.ajax({
-            url: '/support/request/' + $("#submit_support_comment").data("request_id") + '/upload',
+            url: 'support/request/' + $("#submit_support_comment").data("request_id") + '/upload',
             type: "POST",
             data: {
                 csrftoken: csrftoken,
@@ -434,10 +434,20 @@ function setup_upload_support_file_dialog() {
 function initialize_create_support_request_dialog() {
     $('#create_support_request_form_wizard').foundation();
 
-    $('#create_support_request_form_wizard').on('invalid.fndtn.abide', function () {
+    $('#create_support_request_form_wizard').on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_support_request_form", $("#support-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         var template = {
             "subject" : $('#subject', this).val(),
             "description" : $('#description', this).val(),
@@ -487,7 +497,7 @@ Sunstone.addInfoPanel("support_info_panel", support_info_panel);
 //Sunstone.addMainTab('enterprise-tab',enterprise_tab);
 //
 //$(document).on("click", "#li_doc-tab a", function(){
-//    window.open("http://docs.opennebula.org/4.10/");
+//    window.open("http://docs.opennebula.org/4.12/");
 //    return false;
 //})
 //

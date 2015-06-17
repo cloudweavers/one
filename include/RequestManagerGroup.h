@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -69,77 +69,61 @@ public:
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-class GroupEditProvider : public Request
+class GroupEditAdmin : public Request
 {
 public:
     void request_execute(xmlrpc_c::paramList const& _paramList,
                          RequestAttributes& att);
 
 protected:
-    GroupEditProvider(  const string& method_name,
-                        const string& help,
-                        const string& params,
-                        bool          _check_obj_exist)
-        :Request(method_name,params,help),
-         check_obj_exist(_check_obj_exist)
+    GroupEditAdmin( const string& method_name,
+                    const string& help,
+                    const string& params)
+        :Request(method_name,params,help)
     {
         Nebula& nd  = Nebula::instance();
         pool        = nd.get_gpool();
-        clpool      = nd.get_clpool();
-        zonepool    = nd.get_zonepool();
-        aclm        = nd.get_aclm();
-
-        local_zone_id = nd.get_zone_id();
+        upool       = nd.get_upool();
 
         auth_object = PoolObjectSQL::GROUP;
         auth_op     = AuthRequest::ADMIN;
     };
 
-    ZonePool*    zonepool;
-    ClusterPool* clpool;
-    AclManager*  aclm;
+    UserPool*   upool;
 
-    bool check_obj_exist;
-    int local_zone_id;
-
-    virtual int edit_resource_provider(
-            Group* group, int zone_id, int cluster_id, string& error_msg) = 0;
+    virtual int edit_admin(Group* group, int user_id, string& error_msg) = 0;
 };
 
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-class GroupAddProvider : public GroupEditProvider
+class GroupAddAdmin : public GroupEditAdmin
 {
 public:
-    GroupAddProvider():
-        GroupEditProvider("GroupAddProvider",
-                          "Adds a resource provider to the group",
-                          "A:siii",
-                          true){};
+    GroupAddAdmin():
+        GroupEditAdmin( "GroupAddAdmin",
+                        "Adds a user to the group admin set",
+                        "A:sii"){};
 
-    ~GroupAddProvider(){};
+    ~GroupAddAdmin(){};
 
-    int edit_resource_provider(
-            Group* group, int zone_id, int cluster_id, string& error_msg);
+    int edit_admin(Group* group, int user_id, string& error_msg);
 };
 
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-class GroupDelProvider : public GroupEditProvider
+class GroupDelAdmin : public GroupEditAdmin
 {
 public:
-    GroupDelProvider():
-        GroupEditProvider("GroupDelProvider",
-                          "Deletes a resource provider from the group",
-                          "A:siii",
-                          false){};
+    GroupDelAdmin():
+        GroupEditAdmin( "GroupDelAdmin",
+                        "Removes a user from the group admin set",
+                        "A:sii"){};
 
-    ~GroupDelProvider(){};
+    ~GroupDelAdmin(){};
 
-    int edit_resource_provider(
-            Group* group, int zone_id, int cluster_id, string& error_msg);
+    int edit_admin(Group* group, int user_id, string& error_msg);
 };
 
 /* -------------------------------------------------------------------------- */

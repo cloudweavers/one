@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,8 +106,16 @@ public class Client{
                 }
                 catch (ClassCastException e)
                 {
-                    // The result may be an Integer
-                    msg = ((Integer) result[1]).toString();
+                    try
+                    {
+                        // The result may be an Integer
+                        msg = ((Integer) result[1]).toString();
+                    }
+                    catch (ClassCastException ei)
+                    {
+                        // The result may be a Boolean
+                        msg = ((Boolean) result[1]).toString();
+                    }
                 }
             }
         }

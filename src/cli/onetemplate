@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -171,7 +171,10 @@ cmd=CommandParser::CmdParser.new(ARGV) do
 
     instantiate_desc = <<-EOT.unindent
         Creates a new VM instance from the given Template. This VM can be
-        managed with the 'onevm' command
+        managed with the 'onevm' command.
+
+        The source Template can be modified adding or replacing attributes with
+        the optional file argument, or with the options.
     EOT
 
     command :instantiate, instantiate_desc, :templateid, [:file, nil],

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -62,7 +62,7 @@ public:
 protected:
     int get_suitable_nodes(vector<xmlNodePtr>& content)
     {
-        return get_nodes("/DATASTORE_POOL/DATASTORE[TYPE=1]", content);
+        return get_nodes("/DATASTORE_POOL/DATASTORE[TYPE=1 and STATE=0]", content);
     };
 };
 

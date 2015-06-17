@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -113,7 +113,7 @@ int ImageManager::acquire_image(int vm_id, Image *img, string& error)
         case Image::READY:
             img->inc_running(vm_id);
 
-            if ( img->isPersistent() )
+            if ( img->is_persistent() )
             {
                 img->set_state(Image::USED_PERS);
             }
@@ -160,11 +160,9 @@ int ImageManager::acquire_image(int vm_id, Image *img, string& error)
 
 void ImageManager::release_image(int vm_id, int iid, bool failed)
 {
-    Image * img;
+    ostringstream oss;
 
-    ostringstream disk_file;
-
-    img = ipool->get(iid,true);
+    Image * img = ipool->get(iid,true);
 
     if ( img == 0 )
     {
@@ -218,27 +216,10 @@ void ImageManager::release_image(int vm_id, int iid, bool failed)
         break;
 
         case Image::LOCKED:
-            if ( img->isSaving() ) //SAVE_AS images are LOCKED till released
-            {
-                if (failed == true)
-                {
-                    img->set_state(Image::ERROR);
-                }
-                else
-                {
-                    img->set_state(Image::READY);
-                }
+            oss << "Releasing image in wrong state: "
+                << Image::state_to_str(img->get_state());
 
-                ipool->update(img);
-            }
-            else
-            {
-                stringstream oss;
-                oss << "Releasing image in wrong state: "
-                    << Image::state_to_str(img->get_state());
-
-                NebulaLog::log("ImM", Log::ERROR, oss.str());
-            }
+            NebulaLog::log("ImM", Log::ERROR, oss.str());
 
             img->unlock();
         break;
@@ -249,7 +230,6 @@ void ImageManager::release_image(int vm_id, int iid, bool failed)
         case Image::DISABLED:
         case Image::READY:
         case Image::ERROR:
-           ostringstream oss;
            oss << "Releasing image in wrong state: "
                << Image::state_to_str(img->get_state());
 
@@ -265,11 +245,7 @@ void ImageManager::release_image(int vm_id, int iid, bool failed)
 
 void ImageManager::release_cloning_image(int iid, int clone_img_id)
 {
-    Image * img;
-
-    ostringstream disk_file;
-
-    img = ipool->get(iid,true);
+    Image * img = ipool->get(iid,true);
 
     if ( img == 0 )
     {
@@ -296,15 +272,13 @@ void ImageManager::release_cloning_image(int iid, int clone_img_id)
     {
         case Image::USED:
         case Image::CLONE:
-
             if (img->dec_cloning(clone_img_id) == 0  && img->get_running() == 0)
             {
                 img->set_state(Image::READY);
             }
 
             ipool->update(img);
-
-        break;
+            break;
 
         case Image::DELETE:
         case Image::INIT:
@@ -313,14 +287,13 @@ void ImageManager::release_cloning_image(int iid, int clone_img_id)
         case Image::ERROR:
         case Image::USED_PERS:
         case Image::LOCKED:
+            ostringstream oss;
 
-           ostringstream oss;
-           oss << "Releasing image in wrong state: "
-               << Image::state_to_str(img->get_state());
+            oss << "Releasing image in wrong state: "
+                << Image::state_to_str(img->get_state());
 
-           NebulaLog::log("ImM", Log::ERROR, oss.str());
-
-        break;
+            NebulaLog::log("ImM", Log::ERROR, oss.str());
+            break;
     }
 
     img->unlock();
@@ -390,13 +363,15 @@ int ImageManager::enable_image(int iid, bool to_enable, string& error_str)
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-int ImageManager::delete_image(int iid, const string& ds_data, string& error_str)
+int ImageManager::delete_image(int iid, string& error_str)
 {
-    Image * img;
+    Image *     img;
+    Datastore * ds;
 
     string   source;
     string   img_tmpl;
     string * drv_msg;
+    string   ds_data;
 
     long long size;
     int ds_id;
@@ -411,6 +386,31 @@ int ImageManager::delete_image(int iid, const string& ds_data, string& error_str
 
     if ( img == 0 )
     {
+        error_str = "Image does not exist";
+        return -1;
+    }
+
+    ds_id = img->get_ds_id();
+
+    img->unlock();
+
+    ds = dspool->get(ds_id, true);
+
+    if ( ds == 0 )
+    {
+       error_str = "Datastore no longer exists cannot remove image";
+       return -1;
+    }
+
+    ds->to_xml(ds_data);
+
+    ds->unlock();
+
+    img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error_str = "Image does not exist";
         return -1;
     }
 
@@ -518,6 +518,16 @@ int ImageManager::delete_image(int iid, const string& ds_data, string& error_str
         release_cloning_image(cloning_id, iid);
     }
 
+    ds = dspool->get(ds_id, true);
+
+    if ( ds != 0 )
+    {
+        ds->del_image(iid);
+        dspool->update(ds);
+
+        ds->unlock();
+    }
+
     return 0;
 }
 
@@ -602,7 +612,7 @@ int ImageManager::clone_image(int   new_id,
         case Image::READY:
             img->inc_cloning(new_id);
 
-            if (img->isPersistent())
+            if (img->is_persistent())
             {
                 img->set_state(Image::CLONE);
             }
@@ -701,12 +711,11 @@ int ImageManager::register_image(int iid, const string& ds_data, string& error)
     {
         string source = img->get_source();
 
-        if ( img->isSaving() || img->get_type() == Image::DATABLOCK )
+        if ( img->is_saving() || img->get_type() == Image::DATABLOCK )
         {
             imd->mkfs(img->get_oid(), *drv_msg);
 
-            oss << "Creating disk at " << source
-                << " of "<<  img->get_size()
+            oss << "Creating disk at " << source << " of "<<  img->get_size()
                 << "Mb (type: " <<  img->get_fstype() << ")";
         }
         else if ( !source.empty() ) //Source in Template
@@ -857,4 +866,334 @@ string * ImageManager::format_message(
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+
+void ImageManager::set_image_snapshots(int iid, const Snapshots& s, bool failed)
+{
+    Image * img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        return;
+    }
+
+    switch(img->get_type())
+    {
+        case Image::OS:
+        case Image::DATABLOCK:
+            break;
+
+        case Image::KERNEL:
+        case Image::RAMDISK:
+        case Image::CONTEXT:
+        case Image::CDROM:
+            img->unlock();
+            return;
+    }
+
+    if (img->get_state() != Image::USED_PERS)
+    {
+        img->unlock();
+        return;
+    }
+
+    img->set_snapshots(s);
+
+    ipool->update(img);
+
+    img->unlock();
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int ImageManager::delete_snapshot(int iid, int sid, string& error)
+{
+    const ImageManagerDriver* imd = get();
+
+    if ( imd == 0 )
+    {
+        error = "Could not get datastore driver";
+        NebulaLog::log("ImM",Log::ERROR, error);
+
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Check action consistency:                                             */
+    /*    state is READY                                                      */
+    /*    snapshot can be deleted (not active, no childs, exists)             */
+    /* ---------------------------------------------------------------------- */
+    Image * img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    if (img->get_state() != Image::READY)
+    {
+        error = "Cannot delete snapshot in state " + Image::state_to_str(img->get_state());
+        img->unlock();
+        return -1;
+    }
+
+    const Snapshots& snaps = img->get_snapshots();
+
+    if (!snaps.test_delete(sid, error))
+    {
+        img->unlock();
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Get DS data for driver                                                */
+    /* ---------------------------------------------------------------------- */
+    int ds_id = img->get_ds_id();
+
+    img->unlock();
+
+    string ds_data;
+
+    Datastore * ds = dspool->get(ds_id, true);
+
+    if ( ds == 0 )
+    {
+       error = "Datastore no longer exists";
+       return -1;
+    }
+
+    ds->to_xml(ds_data);
+
+    ds->unlock();
+
+    img = ipool->get(iid,true);
+
+    /* ---------------------------------------------------------------------- */
+    /*  Format message and send action to driver                              */
+    /* ---------------------------------------------------------------------- */
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    img->set_target_snapshot(sid);
+
+    string img_tmpl;
+    string * drv_msg = format_message(img->to_xml(img_tmpl), ds_data);
+
+    imd->snapshot_delete(iid, *drv_msg);
+
+    img->set_state(Image::LOCKED);
+
+    ipool->update(img);
+
+    img->unlock();
+
+    delete drv_msg;
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int ImageManager::revert_snapshot(int iid, int sid, string& error)
+{
+    const ImageManagerDriver* imd = get();
+
+    if ( imd == 0 )
+    {
+        error = "Could not get datastore driver";
+        NebulaLog::log("ImM",Log::ERROR, error);
+
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Check action consistency:                                             */
+    /*    state is READY                                                      */
+    /*    snapshot exists                                                     */
+    /*    snapshot is not the active one                                      */
+    /* ---------------------------------------------------------------------- */
+
+    Image * img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    if (img->get_state() != Image::READY)
+    {
+        error = "Cannot revert to snapshot in state " + Image::state_to_str(img->get_state());
+        img->unlock();
+        return -1;
+    }
+
+    const Snapshots& snaps = img->get_snapshots();
+
+    if (!snaps.exists(sid))
+    {
+        error = "Snapshot does not exist";
+
+        img->unlock();
+        return -1;
+    }
+
+    if (snaps.get_active_id() == sid)
+    {
+        error = "Snapshot is already the active one";
+
+        img->unlock();
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Get DS data for driver                                                */
+    /* ---------------------------------------------------------------------- */
+    int ds_id = img->get_ds_id();
+
+    img->unlock();
+
+    string ds_data;
+
+    Datastore * ds = dspool->get(ds_id, true);
+
+    if ( ds == 0 )
+    {
+       error = "Datastore no longer exists";
+       return -1;
+    }
+
+    ds->to_xml(ds_data);
+
+    ds->unlock();
+
+    /* ---------------------------------------------------------------------- */
+    /*  Format message and send action to driver                              */
+    /* ---------------------------------------------------------------------- */
+    img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    img->set_target_snapshot(sid);
+
+    string   img_tmpl;
+    string * drv_msg = format_message(img->to_xml(img_tmpl), ds_data);
+
+    imd->snapshot_revert(iid, *drv_msg);
+
+    img->set_state(Image::LOCKED);
+
+    ipool->update(img);
+
+    img->unlock();
+
+    delete drv_msg;
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int ImageManager::flatten_snapshot(int iid, int sid, string& error)
+{
+    const ImageManagerDriver* imd = get();
+
+    if ( imd == 0 )
+    {
+        error = "Could not get datastore driver";
+        NebulaLog::log("ImM",Log::ERROR, error);
+
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Check action consistency:                                             */
+    /*    state is READY                                                      */
+    /*    snapshot exists                                                     */
+    /* ---------------------------------------------------------------------- */
+
+    Image * img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    if (img->get_state() != Image::READY)
+    {
+        error = "Cannot flatten snapshot in state " + Image::state_to_str(img->get_state());
+        img->unlock();
+        return -1;
+    }
+
+    const Snapshots& snaps = img->get_snapshots();
+
+    if (!snaps.exists(sid))
+    {
+        error = "Snapshot does not exist";
+
+        img->unlock();
+        return -1;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /*  Get DS data for driver                                                */
+    /* ---------------------------------------------------------------------- */
+    int ds_id = img->get_ds_id();
+
+    img->unlock();
+
+    string ds_data;
+
+    Datastore * ds = dspool->get(ds_id, true);
+
+    if ( ds == 0 )
+    {
+       error = "Datastore no longer exists";
+       return -1;
+    }
+
+    ds->to_xml(ds_data);
+
+    ds->unlock();
+
+    /* ---------------------------------------------------------------------- */
+    /*  Format message and send action to driver                              */
+    /* ---------------------------------------------------------------------- */
+    img = ipool->get(iid,true);
+
+    if ( img == 0 )
+    {
+        error = "Image does not exist";
+        return -1;
+    }
+
+    img->set_target_snapshot(sid);
+
+    string   img_tmpl;
+    string * drv_msg = format_message(img->to_xml(img_tmpl), ds_data);
+
+    imd->snapshot_flatten(iid, *drv_msg);
+
+    img->set_state(Image::LOCKED);
+
+    ipool->update(img);
+
+    img->unlock();
+
+    delete drv_msg;
+
+    return 0;
+}
 

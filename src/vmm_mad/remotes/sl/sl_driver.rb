@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -171,6 +171,8 @@ class SLDriver
                      :api_key  => @region['api_key']}
 
         client_cred[:endpoint_url]=@region['endpoint'] if @region['endpoint']
+
+        client_cred[:timeout] = public_cloud_sl_conf['timeout'] || 120
 
 
         @sl_client = SoftLayer::Client.new(client_cred)
@@ -379,6 +381,7 @@ private
 
     # Retrieve the VM information from the SoftLayer instance
     def parse_poll(vm)
+      begin
         info =  "#{POLL_ATTRIBUTE[:usedmemory]}=0 " \
                 "#{POLL_ATTRIBUTE[:usedcpu]}=0 " \
                 "#{POLL_ATTRIBUTE[:nettx]}=0 " \
@@ -407,7 +410,7 @@ private
                             when "PAUSED"
                                 VM_STATE[:paused]
                             else
-                                VM_STATE[:deleted]
+                                VM_STATE[:unknown]
                     end
         end
         info << "#{POLL_ATTRIBUTE[:state]}=#{state} "
@@ -426,6 +429,11 @@ private
         info << "SL_CRED_USER=#{user} SL_CRED_PASSWORD=#{pwd}" if user and pwd
 
         info
+      rescue
+        # Unkown state if exception occurs retrieving information from
+        # an instance
+        "#{POLL_ATTRIBUTE[:state]}=#{VM_STATE[:unknown]} "
+      end
     end
 
     # Execute a SoftLayer command

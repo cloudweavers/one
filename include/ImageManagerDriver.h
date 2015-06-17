@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -114,6 +114,27 @@ private:
      *    @param drv_msg xml data for the mad operation.
      */
     void monitor(int oid, const string& drv_msg) const;
+
+    /**
+     *  Sends a delete snapshot command: "SNAP_DELETE DS_ID DS_XML"
+     *    @param oid the datastore id.
+     *    @param drv_msg xml data for the mad operation.
+     */
+    void snapshot_delete(int oid, const string& drv_msg) const;
+
+    /**
+     *  Sends a revert snapshot command: "SNAP_REVERT DS_ID DS_XML"
+     *    @param oid the datastore id.
+     *    @param drv_msg xml data for the mad operation.
+     */
+    void snapshot_revert(int oid, const string& drv_msg) const;
+
+    /**
+     *  Sends a flatten snapshot command: "SNAP_FLATTEN DS_ID DS_XML"
+     *    @param oid the datastore id.
+     *    @param drv_msg xml data for the mad operation.
+     */
+    void snapshot_flatten(int oid, const string& drv_msg) const;
 };
 
 /* -------------------------------------------------------------------------- */

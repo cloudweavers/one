@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2014, C12G Labs S.L.                                        #
+# Copyright 2010-2015, C12G Labs S.L.                                        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -276,8 +276,24 @@ protected
                 vm_state = node['vm_info']['VM']['STATE']
                 lcm_state = node['vm_info']['VM']['LCM_STATE']
 
-                # UNKNOWN or FAILED
-                if (vm_state == '3' && lcm_state == '16') || vm_state == '7'
+                if vm_state == '7' ||            # FAILED
+                    (vm_state == '3' &&          # ACTIVE
+                        (   lcm_state == '14' || # FAILURE
+                            lcm_state == '16' || # UNKNOWN
+                            lcm_state == '36' || # BOOT_FAILURE
+                            lcm_state == '37' || # BOOT_MIGRATE_FAILURE
+                            lcm_state == '38' || # PROLOG_MIGRATE_FAILURE
+                            lcm_state == '39' || # PROLOG_FAILURE
+                            lcm_state == '40' || # EPILOG_FAILURE
+                            lcm_state == '41' || # EPILOG_STOP_FAILURE
+                            lcm_state == '42' || # EPILOG_UNDEPLOY_FAILURE
+                            lcm_state == '44' || # PROLOG_MIGRATE_POWEROFF_FAILURE
+                            lcm_state == '46' || # PROLOG_MIGRATE_SUSPEND_FAILURE
+                            lcm_state == '47' || # BOOT_UNDEPLOY_FAILURE
+                            lcm_state == '48' || # BOOT_STOPPED_FAILURE
+                            lcm_state == '49' || # PROLOG_RESUME_FAILURE
+                            lcm_state == '50' )  # PROLOG_UNDEPLOY_FAILURE
+                    )
                     return true
                 end
             end

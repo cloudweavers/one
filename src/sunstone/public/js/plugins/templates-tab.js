@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -259,7 +259,7 @@ if (Config.isTemplateCreationTabEnabled('os_booting')){
           '<a id="refresh_kernel_table" href="#" class="refresh button small radius secondary"><i class="fa fa-refresh" /></a>' +
         '</div>' +
         '<div class="large-4 columns">'+
-          '<input id="kernel_search" type="text" class="search" placeholder="'+tr("Search")+'"/>'+
+          '<input id="kernel_search" type="search" class="search" placeholder="'+tr("Search")+'"/>'+
         '</div>'+
       '</div>'+
       '<div class="row">'+
@@ -326,7 +326,7 @@ if (Config.isTemplateCreationTabEnabled('os_booting')){
           '<a id="refresh_ramdisk_table" href="#" class="refresh button small radius secondary"><i class="fa fa-refresh" /></a>' +
         '</div>' +
         '<div class="large-4 columns">'+
-          '<input id="initrd_search" type="text" class="search" placeholder="'+tr("Search")+'"/>'+
+          '<input id="initrd_search" type="search" class="search" placeholder="'+tr("Search")+'"/>'+
         '</div>'+
       '</div>'+
       '<div class="row">'+
@@ -503,7 +503,7 @@ if (Config.isTemplateCreationTabEnabled('input_output')){
           '</label>'+
           '<input type="text" id="PORT" name="port" />'+
         '</div>'+
-        '<div class="large-6 columns hypervisor only_kvm only_vmware only_xen">'+
+        '<div class="large-6 columns">'+
           '<label for="KEYMAP">'+tr("Keymap")+
             '<span class="tip">'+tr("Keyboard configuration locale to use in the VNC/SPICE display")+'</span>'+
           '</label>'+
@@ -516,6 +516,14 @@ if (Config.isTemplateCreationTabEnabled('input_output')){
             '<span class="tip">'+tr("Password for the VNC/SPICE server")+'</span>'+
           '</label>'+
           '<input type="text" id="PASSWD" name="graphics_pw" />'+
+        '</div>'+
+      '</div>'+
+      '<div class="row hypervisor only_kvm only_vmware only_xen">'+
+        '<div class="columns large-12">'+
+            '<input type="checkbox" name="RANDOM_PASSWD" id="RANDOM_PASSWD">'+
+            '<label for="RANDOM_PASSWD">'+ tr("Generate Random Password")+
+              '<span class="tip">'+tr("A random password will be generated for each VM, and will be included in the VM information")+'</span>'+
+            '</label>'+
         '</div>'+
       '</div>'+
     '</fieldset>'+
@@ -617,7 +625,7 @@ if (Config.isTemplateCreationTabEnabled('context')){
              '<a id="refresh_context_table" href="#" class="refresh button small radius secondary"><i class="fa fa-refresh" /></a>' +
           '</div>' +
           '<div class="large-4 columns">'+
-            '<input id="files_search" type="text" class="search" placeholder="'+tr("Search")+'"/>'+
+            '<input id="files_search" type="search" class="search" placeholder="'+tr("Search")+'"/>'+
           '</div>'+
         '</div>'+
         '<div class="row">'+
@@ -710,7 +718,7 @@ if (Config.isTemplateCreationTabEnabled('context')){
                     '<th colspan="4" style="font-size: 16px !important">'+
                       '<i class="fa fa-lg fa-fw fa-cogs off-color"/>'+
                       ''+tr("User Inputs")+''+
-                      '<span class="tip">'+tr("These attributes must be provided by the user when a new VM is intantatiated using this template. They will be included in the VM context")+'</span>'+
+                      '<span class="tip">'+tr("These attributes must be provided by the user when a new VM is intantatiated using each template. They will be included in the VM context")+'</span>'+
                     '</th>'+
                   '</tr>'+
                 '</thead>'+
@@ -766,7 +774,7 @@ if (Config.isTemplateCreationTabEnabled('scheduling')){
                      '<a id="refresh_hosts_placement" href="#" class="refresh button small radius secondary"><i class="fa fa-refresh" /></a>' +
                   '</div>' +
                   '<div class="large-4 columns">'+
-                    '<input id="hosts_search" type="text" class="search" placeholder="'+tr("Search")+'"/>'+
+                    '<input id="hosts_search" type="search" class="search" placeholder="'+tr("Search")+'"/>'+
                   '</div>'+
                 '</div>'+
                 '<div class="row">'+
@@ -807,7 +815,7 @@ if (Config.isTemplateCreationTabEnabled('scheduling')){
                      '<a id="refresh_clusters_placement" href="#" class="refresh button small radius secondary"><i class="fa fa-refresh" /></a>' +
                   '</div>' +
                   '<div class="large-4 columns">'+
-                    '<input id="clusters_search" type="text" class="search" placeholder="'+tr("Search")+'"/>'+
+                    '<input id="clusters_search" type="search" class="search" placeholder="'+tr("Search")+'"/>'+
                   '</div>'+
                 '</div>'+
                 '<div class="row">'+
@@ -1131,7 +1139,8 @@ var hybrid_inputs = {
     {
       name: "HOURLYBILLING",
       label: tr("Hourly Billing"),
-      tooltip: tr("Specifies the billing type for the instance . When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis")
+      tooltip: tr("Specifies the billing type for the instance . When true the computing instance will be billed on hourly usage, otherwise it will be billed on a monthly basis"),
+      required: true
     },
     {
       name: "INSTANCE_TYPE",
@@ -1142,7 +1151,8 @@ var hybrid_inputs = {
     {
       name: "LOCALDISK",
       label: tr("Local Disk"),
-      tooltip: tr("Name of the placement group. When true the disks for the computing instance will be provisioned on the host which it runs, otherwise SAN disks will be provisioned")
+      tooltip: tr("Name of the placement group. When true the disks for the computing instance will be provisioned on the host which it runs, otherwise SAN disks will be provisioned"),
+      required: true
     },
     {
       name: "MAXMEMORY",
@@ -1197,6 +1207,11 @@ var hybrid_inputs = {
     }
   ],
   azure: [
+    {
+      name: "AFFINITY_GROUP",
+      label: tr("Affinity Group"),
+      tooltip: tr("Affinity groups allow you to group your Azure services to optimize performance. All services and VMs within an affinity group will be located in the same region") 
+    },
     {
       name: "AVAILABILITY_SET",
       label: tr("Availability Set"),
@@ -1369,6 +1384,13 @@ var template_actions = {
 
             //$('a.refresh', context).trigger("click");
           });
+        }
+    },
+
+    "Template.import_dialog" : {
+        type: "create",
+        call: function(){
+          popUpTemplateImportDialog();
         }
     },
 
@@ -1596,6 +1618,15 @@ var template_buttons = {
         type: "create_dialog",
         layout: "create"
     },
+
+    "Template.import_dialog" : {
+        type: "create_dialog",
+        layout: "create",
+        text:  tr("Import"),
+        icon: '<i class="fa fa-download">',
+        alwaysActive: true
+    },
+
     "Template.update_dialog" : {
         type: "action",
         layout: "main",
@@ -1652,7 +1683,7 @@ var templates_tab = {
     buttons: template_buttons,
     tabClass: 'subTab',
     parentTab: 'vresources-tab',
-    search_input: '<input id="template_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="template_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-file-o"></i>&emsp;'+tr("Templates"),
     info_header: '<i class="fa fa-fw fa-file-o"></i>&emsp;'+tr("Template"),
     subheader: '<span/> <small></small>&emsp;</span>',
@@ -2216,6 +2247,54 @@ function generate_disk_tab_content(str_disk_tab_id){
                     '<option value="native">'+tr("native")+'</option>'+
                   '</select>'+
                 '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="TOTAL_BYTES_SEC">'+tr("Total Bytes Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="TOTAL_BYTES_SEC" name="TOTAL_BYTES_SEC" />'+
+                '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="READ_BYTES_SEC">'+tr("Read Bytes Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="READ_BYTES_SEC" name="READ_BYTES_SEC" />'+
+                '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="WRITE_BYTES_SEC">'+tr("Write Bytes Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="WRITE_BYTES_SEC" name="WRITE_BYTES_SEC" />'+
+                '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="TOTAL_IOPS_SEC">'+tr("Total IOPS Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="TOTAL_IOPS_SEC" name="TOTAL_IOPS_SEC" />'+
+                '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="READ_IOPS_SEC">'+tr("Read IOPS Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="READ_IOPS_SEC" name="READ_IOPS_SEC" />'+
+                '</div>'+
+                '<div class="large-6 columns hypervisor only_kvm">'+
+                  '<label for="WRITE_IOPS_SEC">'+tr("Write IOPS Sec")+
+                      '<span class="tip">'+
+                        tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                      '</span>'+
+                  '</label>'+
+                  '<input type="text" id="WRITE_IOPS_SEC" name="WRITE_IOPS_SEC" />'+
+                '</div>'+
               '</div>'})+
       '</div>'+
       '<div id="disk_type" class="volatile" style="display: none;">'+
@@ -2337,6 +2416,54 @@ function generate_disk_tab_content(str_disk_tab_id){
                 '<option value="threads">'+tr("threads")+'</option>'+
                 '<option value="native">'+tr("native")+'</option>'+
               '</select>'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="TOTAL_BYTES_SEC">'+tr("Total Bytes Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="TOTAL_BYTES_SEC" name="TOTAL_BYTES_SEC" />'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="READ_BYTES_SEC">'+tr("Read Bytes Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="READ_BYTES_SEC" name="READ_BYTES_SEC" />'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="WRITE_BYTES_SEC">'+tr("Write Bytes Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="WRITE_BYTES_SEC" name="WRITE_BYTES_SEC" />'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="TOTAL_IOPS_SEC">'+tr("Total IOPS Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="TOTAL_IOPS_SEC" name="TOTAL_IOPS_SEC" />'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="READ_IOPS_SEC">'+tr("Read IOPS Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="READ_IOPS_SEC" name="READ_IOPS_SEC" />'+
+            '</div>'+
+            '<div class="large-6 columns hypervisor only_kvm">'+
+              '<label for="WRITE_IOPS_SEC">'+tr("Write IOPS Sec")+
+                  '<span class="tip">'+
+                    tr("IO throttling attributes for the disk. They are specified in bytes or IOPS (IO Operations) and can be specified for the total (read+write) or specific for read or write. Total and read or write can not be used at the same time. By default these parameters are only allowed to be used by oneadmin.")+
+                  '</span>'+
+              '</label>'+
+              '<input type="text" id="WRITE_IOPS_SEC" name="WRITE_IOPS_SEC" />'+
             '</div>'+
           '</div>'})+
     '</div>';
@@ -2552,7 +2679,7 @@ function generate_nic_tab_content(str_nic_tab_id){
       title: tr("Advanced Options"),
       html_id: 'advanced_nic_template_create',
       content: '<fieldset>'+
-        '<legend>'+tr("Network")+'</legend>'+
+        '<legend>'+tr("Choose Network")+'</legend>'+
         '<div class="row  vm_param">'+
           '<div class="large-6 columns">'+
             '<label for="NETWORK_ID">'+tr("ID")+
@@ -2582,20 +2709,95 @@ function generate_nic_tab_content(str_nic_tab_id){
           '</div>'+
         '</div>'+
       '</fieldset>'+
-      '<div class="row vm_param">'+
-        '<div class="large-6 columns">'+
-          '<label for="IP">'+tr("IP")+
-            '<span class="tip">'+tr("Request an specific IP from the Network")+'</span>'+
-          '</label>'+
-          '<input type="text" id="IP" name="IP" size="3" />'+
+      '<fieldset>'+
+        '<legend>'+tr("Override Network Values IPv4")+'</legend>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="IP">'+tr("IP")+
+              '<span class="tip">'+tr("Request an specific IP from the Network")+'</span>'+
+            '</label>'+
+            '<input type="text" id="IP" name="IP" size="3" />'+
+          '</div>'+
+          '<div class="large-6 columns">'+
+            '<label for="MAC">'+tr("MAC")+
+              '<span class="tip">'+tr("Set a specific MAC to the NIC")+'</span>'+
+            '</label>'+
+            '<input type="text" id="MAC" name="MAC"/>'+
+          '</div>'+
         '</div>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="NETWORK_MASK">'+tr("Network Mask")+
+              '<span class="tip">'+tr("Override the network mask of the network. For example, 255.255.255.0")+'</span>'+
+            '</label>'+
+            '<input type="text" id="NETWORK_MASK" name="NETWORK_MASK"/>'+
+          '</div>'+
+          '<div class="large-6 columns">'+
+            '<label for="NETWORK_ADDRESS">'+tr("Network Address")+
+              '<span class="tip">'+tr("Override the base network address. For example, 192.168.1.0")+'</span>'+
+            '</label>'+
+            '<input type="text" id="NETWORK_ADDRESS" name="NETWORK_ADDRESS"/>'+
+          '</div>'+
+        '</div>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="GATEWAY">'+tr("Gateway")+
+              '<span class="tip">'+tr("Override the Router of the network.")+'</span>'+
+            '</label>'+
+            '<input type="text" id="GATEWAY" name="GATEWAY"/>'+
+          '</div>'+
+          '<div class="large-6 columns">'+
+            '<label for="DNS">'+tr("DNS")+
+              '<span class="tip">'+tr("Override the specific DNS for this network")+'</span>'+
+            '</label>'+
+            '<input type="text" id="DNS" name="DNS"/>'+
+          '</div>'+
+        '</div>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="SEARCH_DOMAIN">'+tr("Search Domain")+
+              '<span class="tip">'+tr("Override the Search Domain for this network.")+'</span>'+
+            '</label>'+
+            '<input type="text" id="SEARCH_DOMAIN" name="SEARCH_DOMAIN"/>'+
+          '</div>'+
+        '</div>'+
+      '</fieldset>'+
+      '<fieldset>'+
+        '<legend>'+tr("Override Network Values IPv6")+'</legend>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="IP6_GLOBAL">'+tr("IP6 Global")+
+              '<span class="tip">'+tr("Request an specific IP from the IPv6 Network")+'</span>'+
+            '</label>'+
+            '<input type="text" id="IP6_GLOBAL" name="IP6_GLOBAL" size="3" />'+
+          '</div>'+
+          '<div class="large-6 columns">'+
+            '<label for="GATEWAY6">'+tr("GATEWAY6")+
+              '<span class="tip">'+tr("Override the Router of the IPv6 network.")+'</span>'+
+            '</label>'+
+            '<input type="text" id="GATEWAY6" name="GATEWAY6"/>'+
+          '</div>'+
+        '</div>'+
+        '<div class="row  vm_param">'+
+          '<div class="large-6 columns">'+
+            '<label for="CONTEXT_FORCE_IPV4">'+tr("Network Mask")+
+              '<span class="tip">'+tr("Override force IPv4 for this IPv6 network. Values: Yes or No.")+'</span>'+
+            '</label>'+
+            '<input type="text" id="CONTEXT_FORCE_IPV4" name="CONTEXT_FORCE_IPV4"/>'+
+          '</div>'+
+        '</div>'+
+      '</fieldset>'+
+      '<fieldset>'+
+        '<legend>'+tr("Harware")+'</legend>'+
+        '<div class="row  vm_param">'+
         '<div class="large-6 columns">'+
           '<label for="MODEL">'+tr("Model")+
             '<span class="tip">'+tr("Hardware that will emulate this network interface. With Xen this is the type attribute of the vif.")+'</span>'+
           '</label>'+
           '<input type="text" id="MODEL" name="MODEL" />'+
         '</div>'+
-      '</div>'+
+        '</div>'+
+      '</fieldset>'+ 
       '<br>'+
       '<fieldset>'+
         '<legend>'+tr("Security Groups")+'</legend>'+
@@ -3843,10 +4045,20 @@ function initialize_create_template_dialog(dialog) {
     //$('button',dialog).button();
 
     //Process form
-    $('#create_template_form_wizard',dialog).on('invalid.fndtn.abide', function () {
+    $('#create_template_form_wizard',dialog).on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_template_form", $("#templates-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         if ($('#create_template_form_wizard',dialog).attr("action") == "create") {
           var vm_json = build_template(this);
           vm_json = {vmtemplate: vm_json};
@@ -3864,10 +4076,20 @@ function initialize_create_template_dialog(dialog) {
         }
     });
 
-    $('#create_template_form_advanced',dialog).on('invalid.fndtn.abide', function () {
+    $('#create_template_form_advanced',dialog).on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_template_form", $("#templates-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+      // Fix for valid event firing twice
+      if(e.namespace != 'abide.fndtn') {
+          return;
+      }
+
       if ($('#create_template_form_advanced',dialog).attr("action") == "create") {
         var template = $('textarea#template',this).val();
 
@@ -4033,6 +4255,10 @@ function build_template(dialog){
 
     vm_json["GRAPHICS"] = {};
     addSectionJSON(vm_json["GRAPHICS"],$('#ioTab .graphics',dialog));
+
+    if (!$.isEmptyObject(vm_json["GRAPHICS"]) && $("#RANDOM_PASSWD:checked", dialog).length > 0) {
+      vm_json["GRAPHICS"]["RANDOM_PASSWD"] = "YES";
+    }
 
     //
     // INPUT
@@ -4504,6 +4730,10 @@ var fillTemplatePopUp = function(template, dialog){
             autoFillInputs(graphics, graphics_section);
         }
 
+        if (graphics["RANDOM_PASSWD"] == "YES") {
+          $("#RANDOM_PASSWD", graphics_section).attr("checked", "checked");
+        }
+
         delete template.GRAPHICS
     }
 
@@ -4856,6 +5086,227 @@ function popUpTemplateCloneDialog(){
     $("input[name='name']",dialog).focus();
 }
 
+function popUpTemplateImportDialog(){
+    setupTemplateImportDialog();
+    var dialog = $('#template_import_dialog');
+    $(dialog).foundation().foundation('reveal', 'open');
+}
+
+// Template import dialog
+function setupTemplateImportDialog(){
+    //Append to DOM
+    dialogs_context.append('<div id="template_import_dialog"></div>');
+    var dialog = $('#template_import_dialog',dialogs_context);
+
+    //Put HTML in place
+
+    var html = '<div class="row">\
+        <h3 id="import_template_header" class="subheader">'+tr("Import vCenter VM Templates")+'</h3>\
+      </div>\
+      <div class="row vcenter_credentials">\
+        <fieldset>\
+          <legend>'+tr("vCenter")+'</legend>\
+          <div class="row">\
+            <div class="large-6 columns">\
+              <label for="vcenter_user">' + tr("User")  + '</label>\
+              <input type="text" name="vcenter_user" id="vcenter_user" />\
+            </div>\
+            <div class="large-6 columns">\
+              <label for="vcenter_host">' + tr("Hostname")  + '</label>\
+              <input type="text" name="vcenter_host" id="vcenter_host" />\
+            </div>\
+          </div>\
+          <div class="row">\
+            <div class="large-6 columns">\
+              <label for="vcenter_password">' + tr("Password")  + '</label>\
+              <input type="password" name="vcenter_password" id="vcenter_password" />\
+            </div>\
+            <div class="large-6 columns">\
+              <br>\
+              <a class="button radius small right" id="get_vcenter_templates">'+tr("Get VM Templates")+'</a>\
+            </div>\
+          </div>\
+          <div class="vcenter_templates">\
+          </div>\
+          <br>\
+          <div class="row">\
+            <div class="large-12 columns">\
+              <br>\
+              <a class="button radius small right success" id="import_vcenter_templates">'+tr("Import")+'</a>\
+            </div>\
+          </div>\
+        </fieldset>\
+        <a class="close-reveal-modal">&#215;</a>\
+      </div>\
+      ';
+
+
+    dialog.html(html);
+    dialog.addClass("reveal-modal medium").attr("data-reveal", "");
+
+    $("#get_vcenter_templates", dialog).on("click", function(){
+      var templates_container = $(".vcenter_templates", dialog);
+
+      var vcenter_user = $("#vcenter_user", dialog).val();
+      var vcenter_password = $("#vcenter_password", dialog).val();
+      var vcenter_host = $("#vcenter_host", dialog).val();
+
+      fillVCenterTemplates({
+        container: templates_container,
+        vcenter_user: vcenter_user,
+        vcenter_password: vcenter_password,
+        vcenter_host: vcenter_host
+      });
+
+
+      return false;
+    })
+
+    $("#import_vcenter_templates", dialog).on("click", function(){
+      $(this).hide();
+
+      $.each($(".template_name:checked", dialog), function(){
+        var template_context = $(this).closest(".vcenter_template");
+
+        $(".vcenter_template_result:not(.success)", template_context).html(
+            '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+              '<i class="fa fa-cloud fa-stack-2x"></i>'+
+              '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+            '</span>');
+
+        var template_json = {
+          "vmtemplate": {
+            "template_raw": $(this).data("one_template")
+          }
+        };
+
+        OpenNebula.Template.create({
+            timeout: true,
+            data: template_json,
+            success: function(request, response) {
+              OpenNebula.Helper.clear_cache("VMTEMPLATE");
+              $(".vcenter_template_result", template_context).addClass("success").html(
+                  '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                    '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                    '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
+                  '</span>');
+
+              $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="running-color">'+
+                    tr("Template created successfully")+' ID:'+response.VMTEMPLATE.ID+
+                  '</p>');
+              Sunstone.runAction('Template.refresh');
+            },
+            error: function (request, error_json){
+                $(".vcenter_template_result", template_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                      '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
+                    '</span>');
+
+                $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="error-color">'+
+                      (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
+                    '</p>');
+                Sunstone.runAction('Template.refresh');
+            }
+        });
+      })
+    });
+}
+
+
+/*
+  Retrieve the list of templates from vCenter and fill the container with them
+
+  opts = {
+    datacenter: "Datacenter Name",
+    cluster: "Cluster Name",
+    container: Jquery div to inject the html,
+    vcenter_user: vCenter Username,
+    vcenter_password: vCenter Password,
+    vcenter_host: vCenter Host
+  }
+ */
+function fillVCenterTemplates(opts) {
+  var path = '/vcenter/templates';
+  opts.container.html(generateAdvancedSection({
+    html_id: path,
+    title: tr("Templates"),
+    content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+    '</span>'
+  }))
+
+  $('a', opts.container).trigger("click")
+
+  $.ajax({
+      url: path,
+      type: "GET",
+      data: {timeout: false},
+      dataType: "json",
+      headers: {
+        "X_VCENTER_USER": opts.vcenter_user,
+        "X_VCENTER_PASSWORD": opts.vcenter_password,
+        "X_VCENTER_HOST": opts.vcenter_host
+      },
+      success: function(response){
+        $(".content", opts.container).html("");
+
+        $('<div class="row">' +
+            '<div class="large-12 columns">' +
+              '<p style="color: #999">' + tr("Please select the vCenter Templates to be imported to OpenNebula.") + '</p>' +
+            '</div>' +
+          '</div>').appendTo($(".content", opts.container))
+
+        $.each(response, function(datacenter_name, templates){
+          $('<div class="row">' +
+              '<div class="large-12 columns">' +
+                '<h5>' +
+                  datacenter_name + ' ' + tr("DataCenter") +
+                '</h5>' +
+              '</div>' +
+            '</div>').appendTo($(".content", opts.container))
+
+          if (templates.length == 0) {
+              $('<div class="row">' +
+                  '<div class="large-12 columns">' +
+                    '<label>' +
+                      tr("No new templates found in this DataCenter") +
+                    '</label>' +
+                  '</div>' +
+                '</div>').appendTo($(".content", opts.container))
+          } else {
+            $.each(templates, function(id, template){
+              var trow = $('<div class="vcenter_template">' +
+                  '<div class="row">' +
+                    '<div class="large-10 columns">' +
+                      '<label>' +
+                        '<input type="checkbox" class="template_name" checked/> ' +
+                        template.name + '&emsp;<span style="color: #999">' + template.host + '</span>' +
+                      '</label>' +
+                      '<div class="large-12 columns vcenter_template_response">'+
+                      '</div>'+
+                    '</div>' +
+                    '<div class="large-2 columns vcenter_template_result">'+
+                    '</div>'+
+                  '</div>'+
+                '</div>').appendTo($(".content", opts.container))
+
+              $(".template_name", trow).data("template_name", template.name)
+              $(".template_name", trow).data("one_template", template.one)
+            });
+          };
+        });
+      },
+      error: function(response){
+        opts.container.html("");
+        onError({}, OpenNebula.Error(response));
+      }
+  });
+
+  return false;
+}
+
+
 // Instantiate dialog
 // Sets up the instiantiate template dialog and all the processing associated to it
 function setupInstantiateTemplateDialog(){
@@ -4872,28 +5323,50 @@ function setupInstantiateTemplateDialog(){
     $("#instantiate_vm_template_proceed", dialog).attr("disabled", "disabled");
 
     var selected_nodes = getSelectedNodes(dataTable_templates);
-    var template_id = ""+selected_nodes[0];
 
-    OpenNebula.Template.show({
-        data : {
-            id: template_id
-        },
-        timeout: true,
-        success: function (request, template_json){
+    var selected_nodes = getSelectedNodes(dataTable_templates);
 
-            $("#instantiate_vm_user_inputs", dialog).empty();
+    $("#instantiate_vm_user_inputs", dialog).empty();
 
-            generateVMTemplateUserInputs(
-                $("#instantiate_vm_user_inputs", dialog),
-                template_json);
+    $("#instantiate_vm_user_inputs", dialog).append(
+      '<br>'+
+      '<div class="row">'+
+        '<div class="large-12 large-centered columns">'+
+          '<div class="subheader">'+
+            tr("Templates to be instantiated") +
+          '</div>'+
+          '<ul class="disc list_of_templates">'+
+          '</ul>'+
+        '</div>'+
+      '</div>');
 
-            $("#instantiate_vm_template_proceed", dialog).removeAttr("disabled");
-        },
-        error: function(request,error_json, container){
-            onError(request,error_json, container);
-            $("#instantiate_vm_user_inputs", dialog).empty();
-        }
-    });
+    $.each(selected_nodes, function(index, template_id){
+      OpenNebula.Template.show({
+          data : {
+              id: template_id
+          },
+          timeout: true,
+          success: function (request, template_json){
+              $(".list_of_templates", dialog).append("<li>" + template_json.VMTEMPLATE.NAME + '</li>')
+
+              var inputs_div = $("<div class='template_user_inputs"+template_json.VMTEMPLATE.ID+"'></div>").appendTo(
+                $("#instantiate_vm_user_inputs", dialog));
+
+              generateVMTemplateUserInputs(
+                  inputs_div,
+                  template_json,
+                  {text_header: template_json.VMTEMPLATE.NAME});
+
+              inputs_div.data("opennebula_id", template_json.VMTEMPLATE.ID)
+          },
+          error: function(request,error_json, container){
+              onError(request,error_json, container);
+              $("#instantiate_vm_user_inputs", dialog).empty();
+          }
+      });
+    })
+
+    $("#instantiate_vm_template_proceed", dialog).removeAttr("disabled");
 
     setupTips(dialog);
 
@@ -4907,56 +5380,56 @@ function setupInstantiateTemplateDialog(){
         var hold = $('#hold',this).prop("checked");
 
         var selected_nodes = getSelectedNodes(dataTable_templates);
-        var template_id = ""+selected_nodes[0];
+        $.each(selected_nodes, function(index, template_id){
+          if (n_times.length){
+              n_times_int=parseInt(n_times,10);
+          };
 
-        if (n_times.length){
-            n_times_int=parseInt(n_times,10);
-        };
+          var extra_msg = "";
+          if (n_times_int > 1) {
+              extra_msg = n_times_int+" times";
+          }
 
-        var extra_msg = "";
-        if (n_times_int > 1) {
-            extra_msg = n_times_int+" times";
-        }
+          notifySubmit("Template.instantiate",template_id, extra_msg);
 
-        notifySubmit("Template.instantiate",template_id, extra_msg);
+          var extra_info = {
+              'hold': hold
+          };
 
-        var extra_info = {
-            'hold': hold
-        };
+          var tmp_json = {};
+          retrieveWizardFields($(".template_user_inputs"+template_id, dialog), tmp_json);
 
-        var tmp_json = {};
-        retrieveWizardFields($(this), tmp_json);
+          extra_info['template'] = tmp_json;
 
-        extra_info['template'] = tmp_json;
+          if (!vm_name.length){ //empty name use OpenNebula core default
+              for (var i=0; i< n_times_int; i++){
+                  extra_info['vm_name'] = "";
+                  Sunstone.runAction("Template.instantiate_quiet", template_id, extra_info);
+              }
+          }
+          else
+          {
+              if (vm_name.indexOf("%i") == -1){//no wildcard, all with the same name
+                  extra_info['vm_name'] = vm_name;
 
-        if (!vm_name.length){ //empty name use OpenNebula core default
-            for (var i=0; i< n_times_int; i++){
-                extra_info['vm_name'] = "";
-                Sunstone.runAction("Template.instantiate_quiet", template_id, extra_info);
-            }
-        }
-        else
-        {
-            if (vm_name.indexOf("%i") == -1){//no wildcard, all with the same name
-                extra_info['vm_name'] = vm_name;
+                  for (var i=0; i< n_times_int; i++){
+                      Sunstone.runAction(
+                          "Template.instantiate_quiet",
+                          template_id,
+                          extra_info);
+                  }
+              } else { //wildcard present: replace wildcard
+                  for (var i=0; i< n_times_int; i++){
+                      extra_info['vm_name'] = vm_name.replace(/%i/gi,i);
 
-                for (var i=0; i< n_times_int; i++){
-                    Sunstone.runAction(
-                        "Template.instantiate_quiet",
-                        template_id,
-                        extra_info);
-                }
-            } else { //wildcard present: replace wildcard
-                for (var i=0; i< n_times_int; i++){
-                    extra_info['vm_name'] = vm_name.replace(/%i/gi,i);
-
-                    Sunstone.runAction(
-                        "Template.instantiate_quiet",
-                        template_id,
-                        extra_info);
-                }
-            }
-        }
+                      Sunstone.runAction(
+                          "Template.instantiate_quiet",
+                          template_id,
+                          extra_info);
+                  }
+              }
+          }
+        })
 
         $instantiate_vm_template_dialog.foundation('reveal', 'close')
         return false;
@@ -4966,12 +5439,6 @@ function setupInstantiateTemplateDialog(){
 // Open creation dialog
 function popUpInstantiateVMTemplateDialog(){
     var selected_nodes = getSelectedNodes(dataTable_templates);
-
-    if ( selected_nodes.length != 1 )
-    {
-      notifyMessage("Please select one (and just one) template to instantiate.");
-      return false;
-    }
 
     setupInstantiateTemplateDialog();
     $instantiate_vm_template_dialog.foundation().foundation('reveal', 'open');

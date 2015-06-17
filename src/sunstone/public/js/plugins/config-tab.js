@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -33,11 +33,15 @@ Config = {
     },
 
     "isTabActionEnabled": function(tab_name, action_name, panel_name){
-      var enabled;
-      if (panel_name) {
-        enabled = config['view']['tabs'][tab_name]['panel_tabs_actions'][panel_name][action_name];
-      } else {
-        enabled = config['view']['tabs'][tab_name]['actions'][action_name];
+      var enabled = false;
+      var config_tab = config['view']['tabs'][tab_name];
+
+      if (config_tab != undefined){
+        if (panel_name) {
+          enabled = config_tab['panel_tabs_actions'][panel_name][action_name];
+        } else {
+          enabled = config_tab['actions'][action_name];
+        }
       }
 
       return enabled;
@@ -122,15 +126,18 @@ Config = {
 var config_response = {};
 var config_tab_content =
 '<div class="row">\
-    <div class="large-6 columns">\
+    <div class="large-4 columns">\
       <h3 id="configuration_dialog" class="subheader">'+tr("Configuration")+'</h3>\
     </div>\
-    <div class="large-6 columns">\
+    <div class="large-8 columns">\
       <dl class="tabs right-info-tabs text-center right" data-tab>\
            <dd class="active"><a href="#info_configuration"><i class="fa fa-info-circle"></i><br>'+tr("Info")+'</a></dd>\
            <dd><a href="#conf_configuration"><i class="fa fa-cog"></i><br>'+tr("Conf")+'</a></dd>\
            <dd><a href="#quotas_configuration"><i class="fa fa-align-left"></i><br>'+tr("Quotas")+'</a></dd>\
-      </dl>\
+           <dd><a href="#acct_configuration"><i class="fa fa-bar-chart-o"></i><br>'+tr("Accounting")+'</a></dd>'+
+           ( Config.isFeatureEnabled("showback") ?
+             '<dd><a href="#showback_configuration"><i class="fa fa-money"></i><br>'+tr("Showback")+'</a></dd>' : '')+
+      '</dl>\
     </div>\
 </div>\
 <div class="reveal-body">\
@@ -200,10 +207,10 @@ var config_tab_content =
                    </select>\
                 </label>\
           </div>\
-          <div class="row">\
-                <label for="wss_checkbox" >' + tr("VNC Secure websockets") + ':\
-                  <input id="wss_checkbox" type="checkbox" value="yes" />\
-                </label>\
+      </div>\
+      <div class="reveal-footer">\
+          <div class="form_buttons">\
+            <button class="button radius right success" id="config_submit" type="button" value="">'+tr("Update config")+'</button>\
           </div>\
       </div>\
     </div>\
@@ -231,11 +238,10 @@ var config_tab_content =
           </div>\
       </div>\
     </div>\
+    <div id="acct_configuration" class="row content">\
     </div>\
-    <div class="reveal-footer">\
-        <div class="form_buttons">\
-          <button class="button radius right success" id="config_submit" type="button" value="">'+tr("Update config")+'</button>\
-        </div>\
+    <div id="showback_configuration" class="row content">\
+    </div>\
     </div>\
   </form>\
   </div>\
@@ -332,8 +338,6 @@ function setupConfigDialog() {
     });
 
     $("#config_ssh_public_key_textarea", '#config_dialog').on("change", function(){
-        var user_id = getSelectedNodes(dataTable_users)[0];
-
         OpenNebula.User.show({
             data : {
                 id: -1
@@ -414,9 +418,9 @@ function setupConfigDialog() {
       })
     });
 
-    $("#quota_group_sel").die();
+    $("#quota_group_sel", dialog).die();
 
-    $("#quota_group_sel").live("change", function() {
+    $("#quota_group_sel", dialog).live("change", function() {
         var value_str = $('select#quota_group_sel').val();
         if(value_str!="")
         {
@@ -526,6 +530,17 @@ function updateUserConfigInfo(request,user_json) {
             fillUserInfo();
         }
     });
+
+    accountingGraphs(
+        $("#acct_configuration", "#config_dialog"),
+        {   fixed_user: info.ID,
+            init_group_by: "vm" });
+
+    if (Config.isFeatureEnabled("showback")) {
+        showbackGraphs(
+            $("#showback_configuration","#config_dialog"),
+            { fixed_user: info.ID });
+    }
 }
 
 function fillGroupQuotas(group_id){

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -251,6 +251,10 @@ public:
                       int& id,
                       string& error_str,
                       RequestAttributes& att);
+
+    bool allocate_authorization(Template *          obj_template,
+                                RequestAttributes&  att,
+                                PoolObjectAuth *    cluster_perms);
 };
 
 /* ------------------------------------------------------------------------- */
@@ -340,6 +344,8 @@ public:
         Nebula& nd = Nebula::instance();
         pool       = nd.get_gpool();
         auth_object = PoolObjectSQL::GROUP;
+
+        vdcpool     = nd.get_vdcpool();
     };
 
     ~GroupAllocate(){};
@@ -349,6 +355,9 @@ public:
                       int& id,
                       string& error_str,
                       RequestAttributes& att);
+
+private:
+    VdcPool * vdcpool;
 };
 
 /* ------------------------------------------------------------------------- */
@@ -542,6 +551,38 @@ public:
                       RequestAttributes& att);
 };
 
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class VdcAllocate : public RequestManagerAllocate
+{
+public:
+    VdcAllocate():
+        RequestManagerAllocate("VdcAllocate",
+                               "Allocates a new VDC",
+                               "A:ss",
+                               true)
+    {
+        Nebula& nd  = Nebula::instance();
+        pool        = nd.get_vdcpool();
+        auth_object = PoolObjectSQL::VDC;
+    };
+
+    ~VdcAllocate(){};
+
+    /* --------------------------------------------------------------------- */
+
+    Template * get_object_template()
+    {
+        return new Template;
+    };
+
+    int pool_allocate(xmlrpc_c::paramList const& _paramList,
+                      Template * tmpl,
+                      int& id,
+                      string& error_str,
+                      RequestAttributes& att);
+};
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */

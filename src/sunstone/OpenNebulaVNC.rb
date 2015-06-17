@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -64,7 +64,28 @@ VNC_STATES = [
         "29"  #SHUTDOWN_UNDEPLOY
         #30, #EPILOG_UNDEPLOY
         #31, #PROLOG_UNDEPLOY
-        #32  #BOOT_UNDEPLOY
+        #32, #BOOT_UNDEPLOY
+        #33, #HOTPLUG_PROLOG_POWEROFF
+        #34, #HOTPLUG_EPILOG_POWEROFF
+        #35, #BOOT_MIGRATE
+        #36, #BOOT_FAILURE
+        #37, #BOOT_MIGRATE_FAILURE
+        #38, #PROLOG_MIGRATE_FAILURE
+        #39, #PROLOG_FAILURE
+        #40, #EPILOG_FAILURE
+        #41, #EPILOG_STOP_FAILURE
+        #42, #EPILOG_UNDEPLOY_FAILURE
+        #43, #PROLOG_MIGRATE_POWEROFF
+        #44, #PROLOG_MIGRATE_POWEROFF_FAILURE
+        #45, #PROLOG_MIGRATE_SUSPEND
+        #46, #PROLOG_MIGRATE_SUSPEND_FAILURE
+        #47, #BOOT_UNDEPLOY_FAILURE
+        #48, #BOOT_STOPPED_FAILURE
+        #49, #PROLOG_RESUME_FAILURE
+        #50, #PROLOG_UNDEPLOY_FAILURE
+        #51, #DISK_SNAPSHOT_POWEROFF
+        #52, #DISK_SNAPSHOT_REVERT_POWEROFF
+        #53, #DISK_SNAPSHOT_DELETE_POWEROFF
 ]
 
 class OpenNebulaVNC

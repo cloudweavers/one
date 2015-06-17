@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -104,6 +104,11 @@ var create_acl_tmpl =
             </div>\
             <div class="large-3 columns">\
                 <input type="checkbox" id="res_secgroup" name="res_secgroup" class="resource_cb" value="SECGROUP"><label for="res_secgroup">'+tr("Security Groups")+'</label>\
+            </div>\
+        </div>\
+        <div class="row">\
+            <div class="large-3 columns">\
+                <input type="checkbox" id="res_vdc" name="res_vdc" class="resource_cb" value="VDC"><label for="res_vdc">'+tr("VDCs")+'</label>\
             </div>\
         </div>\
         </fieldset>\
@@ -260,7 +265,7 @@ var acls_tab = {
     buttons: acl_buttons,
     tabClass: 'subTab',
     parentTab: 'system-tab',
-    search_input: '<input id="acl_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="acl_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-key"></i>&emsp;'+tr("Access Control Lists"),
     subheader: '<span/><small></small>&emsp;',
     table: '<table id="datatable_acls" class="dataTable">\
@@ -407,6 +412,9 @@ function parseAclString(string) {
             break;
         case "SECGROUP":
             resources_str+=tr("Security Groups")+", ";
+            break;
+        case "VDC":
+            resources_str+=tr("VDCs")+", ";
             break;
         };
     };

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -49,15 +49,20 @@ public:
         PROLOG,
         PROLOG_MIGR,
         PROLOG_RESUME,
+        PROLOG_ATTACH,
         EPILOG,
         EPILOG_STOP,
         EPILOG_DELETE,
         EPILOG_DELETE_PREVIOUS,
         EPILOG_DELETE_STOP,
         EPILOG_DELETE_BOTH,
+        EPILOG_DETACH,
         CHECKPOINT,
         DRIVER_CANCEL,
         SAVEAS_HOT,
+        SNAPSHOT_CREATE,
+        SNAPSHOT_REVERT,
+        SNAPSHOT_DELETE,
         FINALIZE
     };
 
@@ -253,6 +258,11 @@ private:
     void prolog_resume_action(int vid);
 
     /**
+     *  This function starts the prolog attach sequence
+     */
+    void prolog_attach_action(int vid);
+
+    /**
      *  This function starts the epilog sequence
      */
     void epilog_action(int vid);
@@ -300,6 +310,11 @@ private:
     void epilog_delete_action(bool local, int vid);
 
     /**
+     *  This function starts the epilog detach sequence
+     */
+    void epilog_detach_action(int vid);
+
+    /**
      *  This function starts the epilog sequence
      */
     void checkpoint_action(int vid);
@@ -313,6 +328,26 @@ private:
      * This function starts the saveas of the given disk
      */
     void saveas_hot_action(int vid);
+
+    /**
+     * This function performs a generic snapshot action
+     */
+    void do_snapshot_action(int vid, const char * action);
+
+    /**
+     * This function takes an snapshot of a disk
+     */
+    void snapshot_create_action(int vid);
+
+    /**
+     * This function takes an snapshot of a disk
+     */
+    void snapshot_revert_action(int vid);
+
+    /**
+     * This function deletes an snapshot of a disk
+     */
+    void snapshot_delete_action(int vid);
 };
 
 #endif /*TRANSFER_MANAGER_H*/

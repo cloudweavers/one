@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -35,7 +35,7 @@ module VNMMAD
         #   @param deploy_id [String]
         #   @param hypervisor [String]
         def initialize(vm_tpl, xpath_filter, deploy_id = nil, hypervisor = nil)
-            @locking = false
+            @locking ||= false
 
             if !hypervisor
                 @hypervisor = detect_hypervisor
@@ -83,38 +83,15 @@ module VNMMAD
         def detect_hypervisor
             lsmod       = `#{VNMNetwork::COMMANDS[:lsmod]}`
             xen_file    = "/proc/xen/capabilities"
+            kvm_dir     = "/sys/class/misc/kvm"
 
             if File.exists?(xen_file)
                 "xen"
-            elsif lsmod.match(/kvm/)
+            elsif lsmod.match(/kvm/) || File.exists?(kvm_dir)
                 "kvm"
             else
                 nil
             end
-        end
-
-        # Get hypervisor bridges
-        #   @return [Hash<String>] with the bridge names
-        def get_interfaces
-            bridges    = Hash.new
-            brctl_exit =`#{VNMNetwork::COMMANDS[:brctl]} show`
-
-            cur_bridge = ""
-
-            brctl_exit.split("\n")[1..-1].each do |l|
-                l = l.split
-
-                if l.length > 1
-                    cur_bridge = l[0]
-
-                    bridges[cur_bridge] = Array.new
-                    bridges[cur_bridge] << l[3] if l[3]
-                else
-                    bridges[cur_bridge] << l[0]
-                end
-            end
-
-            bridges
         end
         
         # Returns true if the template contains the deprecated firewall attributes:

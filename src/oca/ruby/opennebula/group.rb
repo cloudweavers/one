@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -29,8 +29,8 @@ module OpenNebula
             :update         => "group.update",
             :delete         => "group.delete",
             :quota          => "group.quota",
-            :add_provider   => "group.addprovider",
-            :del_provider   => "group.delprovider"
+            :add_admin      => "group.addadmin",
+            :del_admin      => "group.deladmin",
         }
 
         # Flag for requesting connected user's group info
@@ -38,11 +38,10 @@ module OpenNebula
 
         # Default resource ACL's for group users (create)
         GROUP_DEFAULT_ACLS = "VM+IMAGE+TEMPLATE+DOCUMENT+SECGROUP"
-        ALL_CLUSTERS_IN_ZONE = 10
 
         # The default view for group and group admins, must be defined in
         # sunstone_views.yaml
-        GROUP_ADMIN_SUNSTONE_VIEWS = "vdcadmin"
+        GROUP_ADMIN_SUNSTONE_VIEWS = "groupadmin"
 
         # Creates a Group description with just its identifier
         # this method should be used to create plain Group objects.
@@ -82,13 +81,14 @@ module OpenNebula
         #   group_hash[:name] the group name
         #   group_hash[:group_admin] the admin user definition hash, see def
         #   create_admin_user function description for details.
-        #   group_hash[:resource_providers]
-        #   group_hash[:resource_providers][:zone_id]
-        #   group_hash[:resource_providers][:cluster_id]
         #   group_hash[:views] Array of sunstone view names, to be stored
         #       in SUNSTONE_VIEWS
         #   group_hash[:default_view] Default sunstone view name, to be stored
         #       in DEFAULT_VIEW
+        #   group_hash[:admin_views] Array of sunstone view names, to be stored
+        #       in GROUP_ADMIN_VIEWS
+        #   group_hash[:default_admin_view] Default sunstone view name, to be stored
+        #       in DEFAULT_ADMIN_DEFAULT_VIEW
         #
         def create(group_hash)
             # Check arguments
@@ -106,17 +106,6 @@ module OpenNebula
             # Allocate group
             rc = self.allocate(group_hash[:name])
             return rc if OpenNebula.is_error?(rc)
-
-            # Handle resource providers
-            group_hash[:resource_providers].each { |rp|
-                next if rp[:zone_id].nil? && rp[:cluster_id].nil?
-
-                if rp[:cluster_id].class == String && rp[:cluster_id] == "ALL"
-                    add_provider(rp[:zone_id],ALL_CLUSTERS_IN_ZONE)
-                else
-                    add_provider(rp[:zone_id],rp[:cluster_id])
-                end
-            } if !group_hash[:resource_providers].nil?
 
             # Set group ACLs to create resources
             rc, msg = create_default_acls(group_hash[:resources])
@@ -151,23 +140,30 @@ module OpenNebula
             end
 
             str = ""
-            update = false
 
             # Add Sunstone views for the group
             if group_hash[:views]
                 str += "SUNSTONE_VIEWS=\"#{group_hash[:views].join(",")}\"\n"
-                update = true
             end
 
-            # Add Sunstone views for the group
             if group_hash[:default_view]
                 str += "DEFAULT_VIEW=\"#{group_hash[:default_view]}\"\n"
-                update = true
             end
 
-            if update
-                self.update(str, true)
+            # And the admin views
+            if group_hash[:admin_views]
+                str += "GROUP_ADMIN_VIEWS=\"#{group_hash[:admin_views].join(",")}\"\n"
+            else
+                str += "GROUP_ADMIN_VIEWS=#{GROUP_ADMIN_SUNSTONE_VIEWS}\n"
             end
+
+            if group_hash[:default_admin_view]
+                str += "GROUP_ADMIN_DEFAULT_VIEW=\"#{group_hash[:default_admin_view]}\"\n"
+            else
+                str += "GROUP_ADMIN_DEFAULT_VIEW=#{GROUP_ADMIN_SUNSTONE_VIEWS}"
+            end
+
+            self.update(str, true)
 
             return 0
         end
@@ -210,24 +206,22 @@ module OpenNebula
             return rc
         end
 
-        # Adds a resource provider to this group
-        # @param zone_id [Integer] Zone ID
-        # @param cluster_id [Integer] Cluster ID
+        # Adds a User to the Group administrators set
+        # @param user_id [Integer] User ID
         #
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         #   otherwise
-        def add_provider(zone_id, cluster_id)
-            return call(GROUP_METHODS[:add_provider], @pe_id, zone_id.to_i, cluster_id.to_i)
+        def add_admin(user_id)
+            return call(GROUP_METHODS[:add_admin], @pe_id, user_id.to_i)
         end
 
-        # Deletes a resource provider from this group
-        # @param zone_id [Integer] Zone ID
-        # @param cluster_id [Integer] Cluster ID
+        # Removes a User from the Group administrators set
+        # @param user_id [Integer] User ID
         #
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         #   otherwise
-        def del_provider(zone_id, cluster_id)
-            return call(GROUP_METHODS[:del_provider], @pe_id, zone_id.to_i, cluster_id.to_i)
+        def del_admin(user_id)
+            return call(GROUP_METHODS[:del_admin], @pe_id, user_id.to_i)
         end
 
         # ---------------------------------------------------------------------
@@ -243,15 +237,31 @@ module OpenNebula
             return id_array != nil && id_array.include?(uid.to_s)
         end
 
+        # Returns whether or not the user with id 'uid' is an admin of this group
+        def contains_admin(uid)
+            #This doesn't work in ruby 1.8.5
+            #return self["ADMINS/ID[.=#{uid}]"] != nil
+
+            id_array = retrieve_elements('ADMINS/ID')
+            return id_array != nil && id_array.include?(uid.to_s)
+        end
+
         # Returns an array with the numeric user ids
         def user_ids
-            array = Array.new
+            ids = self.retrieve_elements("USERS/ID")
+            
+            return [] if ids.nil?
 
-            self.each("USERS/ID") do |id|
-                array << id.text.to_i
-            end
+            return ids.collect! {|x| x.to_i}
+        end
 
-            return array
+        # Returns an array with the numeric admin user ids
+        def admin_ids
+            ids = self.retrieve_elements("ADMINS/ID")
+
+            return [] if ids.nil?
+
+            return ids.collect! {|x| x.to_i}
         end
 
         private
@@ -297,10 +307,6 @@ module OpenNebula
         #     gdef[:group_admin][:name] username for group admin
         #     gdef[:group_admin][:password] password for group admin
         #     gdef[:group_admin][:auth_driver] auth driver for group admin
-        #     gdef[:group_admin][:resources] resources that group admin manage
-        #     gdef[:group_admin][:manage_resources] whether group admin manages
-        #                                           group users
-        #     gdef[:resources] resources that group users manage
         #
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         def create_admin_user(gdef)
@@ -336,36 +342,12 @@ module OpenNebula
                 return rc
             end
 
-            # Set the default admin view to vdcadmin
-            group_admin.update("DEFAULT_VIEW=#{GROUP_ADMIN_SUNSTONE_VIEWS}", true)
-
-            #Create admin group acls
-            acls = Array.new
-
-            acls_str = (gdef[:group_admin][:resources] || \
-                        gdef[:resources] || GROUP_DEFAULT_ACLS)
-
-            manage_users = gdef[:group_admin][:manage_users] || "YES"
-
-            if manage_users.upcase == "YES"
-                acls << "##{group_admin.id} USER/@#{self.id} CREATE+USE+MANAGE+ADMIN"
-            end
-
-            acls << "##{group_admin.id} #{acls_str}/@#{self.id} " +
-                    "CREATE+USE+MANAGE"
-
-            rc, tmp = create_group_acls(acls)
+            rc = self.add_admin(group_admin.id)
 
             if OpenNebula.is_error?(rc)
                 group_admin.delete
                 return rc
             end
-
-            #Set Sunstone Views for the group
-            gtmpl =  "GROUP_ADMINS=#{gdef[:group_admin][:name]}\n"
-            gtmpl << "GROUP_ADMIN_VIEWS=#{GROUP_ADMIN_SUNSTONE_VIEWS}\n"
-
-            self.update(gtmpl, true)
 
             return nil
         end

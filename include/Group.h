@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -76,24 +76,24 @@ public:
     }
 
     /**
-     * Adds a resource provider
-     * @param zone_id ID of the zone
-     * @param cluster_id ID of the cluster
+     * Adds a User to the admin set. ACL Rules are updated only for this user.
+     *
+     * @param user_id ID of the user
      * @param error_msg Returns the error reason, if any
      *
      * @return 0 on success
      */
-    int add_resource_provider(int zone_id, int cluster_id, string& error_msg);
+    int add_admin(int user_id, string& error_msg);
 
     /**
-     * Deletes a resource provider
-     * @param zone_id ID of the zone
-     * @param cluster_id ID of the cluster
+     * Deletes a User from the admin set. ACL Rules are updated only for this user.
+     *
+     * @param user_id ID of the user
      * @param error_msg Returns the error reason, if any
      *
      * @return 0 on success
      */
-    int del_resource_provider(int zone_id, int cluster_id, string& error_msg);
+    int del_admin(int user_id, string& error_msg);
 
     /**
      *  Object quotas, provides set and check interface
@@ -133,7 +133,8 @@ private:
     Group(int id, const string& name):
         PoolObjectSQL(id,GROUP,name,-1,-1,"","",table),
         ObjectCollection("USERS"),
-        quota()
+        quota(),
+        admins("ADMINS")
     {
         // Allow users in this group to see it
         group_u = 1;
@@ -147,10 +148,16 @@ private:
     };
 
     // *************************************************************************
-    // Attributes (Private)
+    // Administrators
     // *************************************************************************
 
-    set<pair<int,int> > providers;
+    /**
+     *  Stores a collection with the admin users
+     */
+    ObjectCollection admins;
+
+    void add_admin_rules(int user_id);
+    void del_admin_rules(int user_id);
 
     // *************************************************************************
     // DataBase implementation (Private)

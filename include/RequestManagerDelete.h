@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -334,6 +334,24 @@ public:
     ~SecurityGroupDelete(){};
 
     int drop(int oid, PoolObjectSQL * object, string& error_msg);
+};
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class VdcDelete: public RequestManagerDelete
+{
+public:
+    VdcDelete():
+        RequestManagerDelete("VdcDelete", "Deletes a VDC")
+    {
+        Nebula& nd  = Nebula::instance();
+        pool        = nd.get_vdcpool();
+        auth_object = PoolObjectSQL::VDC;
+        auth_op     = AuthRequest::ADMIN;
+    };
+
+    ~VdcDelete(){};
 };
 
 /* -------------------------------------------------------------------------- */

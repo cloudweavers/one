@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -96,7 +96,7 @@ void VirtualMachinePoolInfo::request_execute(
     ostringstream state_filter;
 
     if (( state < VirtualMachinePoolInfo::ALL_VM ) ||
-        ( state > VirtualMachine::FAILED ))
+        ( state > VirtualMachine::UNDEPLOYED ))
     {
         failure_response(XML_RPC_API,
                          request_error("Incorrect filter_flag, state",""),
@@ -507,8 +507,8 @@ void VirtualNetworkPoolInfo::request_execute(
     where_filter(att, filter_flag, start_id, end_id, "pid = -1", "", false,
         false, false, where_vnets);
 
-    where_filter(att, filter_flag, -1, -1, "pid != -1", "", true, true, false,
-        where_reserv);
+    where_filter(att, filter_flag, start_id, end_id, "pid != -1", "", true,
+        true, false, where_reserv);
 
     where_string << "( " << where_vnets << " ) OR ( " << where_reserv << " ) ";
 
@@ -542,3 +542,12 @@ void VirtualNetworkPoolInfo::request_execute(
     return;
 }
 
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+void VdcPoolInfo::request_execute(
+        xmlrpc_c::paramList const& paramList,
+        RequestAttributes& att)
+{
+    dump(att, ALL, -1, -1, "", "");
+}

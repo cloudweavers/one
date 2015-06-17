@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -33,6 +33,7 @@
 #include "DocumentPool.h"
 #include "ZonePool.h"
 #include "SecurityGroupPool.h"
+#include "VdcPool.h"
 
 #include "VirtualMachineManager.h"
 #include "LifeCycleManager.h"
@@ -128,6 +129,11 @@ public:
     SecurityGroupPool * get_secgrouppool()
     {
         return secgrouppool;
+    };
+
+    VdcPool * get_vdcpool()
+    {
+        return vdcpool;
     };
 
     // --------------------------------------------------------------
@@ -378,7 +384,7 @@ public:
      */
     static string code_version()
     {
-        return "4.10.0"; // bump version
+        return "4.12.0"; // bump version
     }
 
     /**
@@ -387,7 +393,7 @@ public:
      */
     static string shared_db_version()
     {
-        return "4.6.0";
+        return "4.11.80";
     }
 
     /**
@@ -396,7 +402,7 @@ public:
      */
     static string local_db_version()
     {
-        return "4.11.80";
+        return "4.13.80";
     }
 
     /**
@@ -652,7 +658,7 @@ private:
                             "/DEFAULT_GROUP_QUOTAS/VM_QUOTA"),
         system_db(0), db(0),
         vmpool(0), hpool(0), vnpool(0), upool(0), ipool(0), gpool(0), tpool(0),
-        dspool(0), clpool(0), docpool(0), zonepool(0), secgrouppool(0),
+        dspool(0), clpool(0), docpool(0), zonepool(0), secgrouppool(0), vdcpool(0),
         lcm(0), vmm(0), im(0), tm(0), dm(0), rm(0), hm(0), authm(0),
         aclm(0), imagem(0)
     {
@@ -701,6 +707,7 @@ private:
         delete docpool;
         delete zonepool;
         delete secgrouppool;
+        delete vdcpool;
         delete vmm;
         delete lcm;
         delete im;
@@ -779,6 +786,7 @@ private:
     DocumentPool       * docpool;
     ZonePool           * zonepool;
     SecurityGroupPool  * secgrouppool;
+    VdcPool            * vdcpool;
 
     // ---------------------------------------------------------------
     // Nebula Managers

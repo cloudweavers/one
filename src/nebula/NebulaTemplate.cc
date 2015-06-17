@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -215,6 +215,19 @@ void OpenNebulaTemplate::set_conf_default()
 
     vattribute = new VectorAttribute("FEDERATION",vvalue);
     conf_default.insert(make_pair(vattribute->name(),vattribute));
+
+/*
+#*******************************************************************************
+# Default showback cost
+#*******************************************************************************
+*/
+    vvalue.clear();
+    vvalue.insert(make_pair("CPU_COST","0"));
+    vvalue.insert(make_pair("MEMORY_COST","0"));
+
+    vattribute = new VectorAttribute("DEFAULT_COST",vvalue);
+    conf_default.insert(make_pair(vattribute->name(),vattribute));
+
 /*
 #*******************************************************************************
 # XML-RPC server configuration
@@ -343,11 +356,18 @@ void OpenNebulaTemplate::set_conf_default()
 #*******************************************************************************
 # Auth Manager Configuration
 #*******************************************************************************
+# DEFAULT_AUTH
 # SESSION_EXPIRATION_TIME
 # ENABLE_OTHER_PERMISSIONS
 # DEFAULT_UMASK
 #*******************************************************************************
 */
+    // DEFAULT_AUTH
+    value = "default";
+
+    attribute = new SingleAttribute("DEFAULT_AUTH",value);
+    conf_default.insert(make_pair(attribute->name(),attribute));
+
     // SESSION_EXPIRATION_TIME
     value = "0";
 

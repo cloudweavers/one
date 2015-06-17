@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -45,6 +45,7 @@ function initialize_create_security_group_dialog(dialog){
     dialog.on("change", '.security_group_rule_network_sel', function(){
         $('.security_group_rule_network',dialog).hide();
         $('div.security_group_rule_network input',dialog).removeAttr('required');
+        $("input#selected_resource_id_"+"new_sg_rule", dialog).removeAttr("required");
 
         $('.vnet_select',dialog).hide();
 
@@ -57,6 +58,7 @@ function initialize_create_security_group_dialog(dialog){
             break;
         case "VNET":
             $('.vnet_select',dialog).show();
+            $("input#selected_resource_id_"+"new_sg_rule", dialog).attr("required", "");
 
             refreshVNetTableSelect(dialog, "new_sg_rule");
 
@@ -180,10 +182,20 @@ function initialize_create_security_group_dialog(dialog){
         }
     });
 
-    $('#create_security_group_form_advanced',dialog).on('invalid.fndtn.abide', function () {
+    $('#create_security_group_form_advanced',dialog).on('invalid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         notifyError(tr("One or more required fields are missing or malformed."));
         popFormDialog("create_security_group_form", $("#secgroups-tab"));
-    }).on('valid.fndtn.abide', function() {
+    }).on('valid.fndtn.abide', function(e) {
+        // Fix for valid event firing twice
+        if(e.namespace != 'abide.fndtn') {
+            return;
+        }
+
         if ($('#create_security_group_form_advanced',dialog).attr("action") == "create") {
 
             var template = $('textarea#template',dialog).val();
@@ -425,7 +437,7 @@ var create_security_group_wizard_html =
       <div class="row">\
         <div class="medium-4 columns">\
           <label>'+tr("Network")+'\
-            <span class="tip">'+tr("Any: apply this rule to any connection regardless of its source or destination. Network: Apply this rule only to a custome define network range. Virtual Network: Apply this rule only to connections with origin or destination in one of the already define VNETs.")+'</span>\
+            <span class="tip">'+tr("Any: apply this rule to any connection regardless of its source or destination. Network: Apply this rule only to a custom defined network range. Virtual Network: Apply this rule only to connections with origin or destination in one of the already defined VNETs.")+'</span>\
           </label>\
           <select class="security_group_rule_network_sel">\
             <option value="ANY" selected="selected">'+tr("Any")+'</option>\
@@ -727,7 +739,7 @@ var security_groups_tab = {
     buttons: security_group_buttons,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="security_group_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="security_group_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-shield"></i>&emsp;'+tr("Security Groups"),
     info_header: '<i class="fa fa-fw fa-shield"></i>&emsp;'+tr("Security Group"),
     subheader: '<span/> <small></small>&emsp;',
@@ -830,6 +842,8 @@ function updateSecurityGroupsView (request,list){
 function updateSecurityGroupInfo(request,security_group){
     security_group_info     = security_group.SECURITY_GROUP;
     security_group_template = security_group_info.TEMPLATE;
+
+    $(".resource-info-header", $("#secgroups-tab")).html(security_group_info.NAME);
 
     stripped_security_group_template = $.extend({}, security_group_info.TEMPLATE);
     delete stripped_security_group_template["RULE"];

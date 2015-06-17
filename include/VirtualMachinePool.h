@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -38,7 +38,9 @@ public:
                        const string&                remotes_location,
                        vector<const Attribute *>&   restricted_attrs,
                        time_t                       expire_time,
-                       bool                         on_hold);
+                       bool                         on_hold,
+                       float                        default_cpu_cost,
+                       float                        default_mem_cost);
 
     ~VirtualMachinePool(){};
 
@@ -101,6 +103,32 @@ public:
 
         return static_cast<VirtualMachine *>(PoolSQL::get(oid,lock));
     };
+
+    /**
+     *  Updates a VM in the data base. The VM SHOULD be locked. It also updates
+     *  the previous state after executing the hooks.
+     *    @param objsql a pointer to the VM
+     *
+     *    @return 0 on success.
+     */
+    virtual int update(
+        VirtualMachine * objsql)
+    {
+        do_hooks(objsql, Hook::UPDATE);
+
+        objsql->set_prev_state();
+
+        return objsql->update(db);
+    };
+
+    /**
+     *  Gets a VM ID by its deploy_id, the dedploy_id - VM id mapping is keep
+     *  in the import_table.
+     *    @param deploy_id to search the id for
+     *    @return -1 if not found or VMID
+     *
+     */
+    int get_vmid(const string& deploy_id);
 
     /**
      *  Function to get the IDs of running VMs
@@ -198,7 +226,13 @@ public:
      */
     static int bootstrap(SqlDB * _db)
     {
-        return VirtualMachine::bootstrap(_db);
+        int rc;
+        ostringstream oss_import(import_db_bootstrap);
+
+        rc  = VirtualMachine::bootstrap(_db);
+        rc += _db->exec(oss_import);
+
+        return rc;
     };
 
     /**
@@ -305,6 +339,27 @@ public:
                 int end_year,
                 string &error_str);
 
+    /**
+     * Deletes the DISK that was in the process of being attached. Releases
+     * Images and updates usage quotas
+     *
+     * @param vid VM id
+     */
+    void delete_attach_disk(int vid);
+
+    /**
+     * Deletes the NIC that was in the process of being attached
+     *
+     * @param vid VM id
+     */
+    void delete_attach_nic(int vid);
+
+    /**
+     * Deletes an entry in the HV-2-vmid mapping table for imported VMs
+     *   @param deploy_id of the VM
+     */
+    void drop_index(const string& deploy_id);
+
 private:
     /**
      *  Factory method to produce VM objects
@@ -326,9 +381,34 @@ private:
     static bool _submit_on_hold;
 
     /**
-     * Callback used in calculate_showback
+     * Default values for cpu and memory cost
      */
-    int min_stime_cb(void * _min_stime, int num, char **values, char **names);
+    static float _default_cpu_cost;
+    static float _default_mem_cost;
+
+    /**
+     * Callback used to get an int in the DB it is used by VM Pool in:
+     *   - calculate_showback (min_stime)
+     *   - get_vmid (vmid)
+     */
+    int db_int_cb(void * _min_stime, int num, char **values, char **names);
+
+    // -------------------------------------------------------------------------
+    // Virtual Machine ID - Deploy ID index for imported VMs
+    // The index is managed by the VirtualMachinePool
+    // -------------------------------------------------------------------------
+    static const char * import_table;
+
+    static const char * import_db_names;
+
+    static const char * import_db_bootstrap;
+
+    /**
+     * Insert deploy_id - vmid index.
+     *   @param replace will replace and not insert
+     *   @return 0 on success
+     */
+    int insert_index(const string& deploy_id, int vm_id, bool replace);
 };
 
 #endif /*VIRTUAL_MACHINE_POOL_H_*/

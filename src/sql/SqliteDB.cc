@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -62,6 +62,16 @@ SqliteDB::~SqliteDB()
     pthread_mutex_destroy(&mutex);
 
     sqlite3_close(db);
+}
+
+/* -------------------------------------------------------------------------- */
+
+bool SqliteDB::multiple_values_support()
+{
+    // Versions > 3.7.11 support multiple value inserts, but tests
+    // have ended in segfault. A transaction seems to perform better
+    //return SQLITE_VERSION_NUMBER >= 3007011;
+    return false;
 }
 
 /* -------------------------------------------------------------------------- */

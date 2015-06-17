@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2010-2014, C12G Labs S.L                                         */
+/* Copyright 2010-2015, C12G Labs S.L                                         */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -357,7 +357,7 @@ var marketplace_import_dialog =
 var marketplace_tab = {
     title: '<i class="fa fa-lg fa-fw fa-shopping-cart"></i>&emsp;' + tr("Marketplace"),
     buttons: market_buttons,
-    search_input: '<input id="marketplace_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="marketplace_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-shopping-cart"></i>&emsp;'+tr("OpenNebula Marketplace"),
     info_header: '<i class="fa fa-fw fa-shopping-cart"></i>&emsp;'+tr("Appliance"),
     subheader: '<span/> <small></small>&emsp;',
@@ -562,21 +562,6 @@ function updateMarketInfo(request,app){
     });
 }
 
-
-/*
- * onlyOneCheckboxListener: Only one box can be checked
- */
-
-function onlyOneCheckboxListener(dataTable) {
-    $('tbody input.check_item', dataTable).live("change", function(){
-        var checked = $(this).is(':checked');
-        $('td', dataTable).removeClass('markrowchecked');
-        $('input.check_item:checked', dataTable).removeAttr('checked');
-        $("td", $(this).closest('tr')).addClass('markrowchecked')
-        $(this).attr('checked', checked);
-    });
-}
-
 /*
  * Document
  */
@@ -602,9 +587,9 @@ $(document).ready(function(){
               { "mDataProp": "_id.$oid", "sWidth" : "200px" },
               { "mDataProp": "name" },
               { "mDataProp": "publisher" },
-              { "mDataProp": "files.0.hypervisor", "sWidth" : "100px"},
-              { "mDataProp": "files.0.os-arch", "sWidth" : "100px"},
-              { "mDataProp": "files.0.format", "sWidth" : "100px"},
+              { "mDataProp": "files.0.hypervisor", "sWidth" : "100px", "sDefaultContent" : "-" },
+              { "mDataProp": "files.0.os-arch", "sWidth" : "100px", "sDefaultContent" : "-" },
+              { "mDataProp": "files.0.format", "sWidth" : "100px", "sDefaultContent" : "-" },
               { "mDataProp": "tags"}
             ],
             "aoColumnDefs": [

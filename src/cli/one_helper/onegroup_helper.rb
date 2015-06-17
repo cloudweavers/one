@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -286,29 +286,23 @@ class OneGroupHelper < OpenNebulaHelper::OneHelper
         puts group.template_str
         puts
 
-        CLIHelper.print_header(str_h1 % "USERS", false)
-        CLIHelper.print_header("%-15s" % ["ID"])
-        group.user_ids.each do |uid|
-            puts "%-15s" % [uid]
-        end
+        admin_ids = group.admin_ids
+
+        CLIHelper::ShowTable.new(nil, self) do
+            column :"USER ID", "", :right, :size=>7 do |d|
+                d
+            end
+
+            column :"ADMIN", "", :left, :size=>5 do |d|
+                if (group.admin_ids.include?(d))
+                    "*"
+                else
+                    ""
+                end
+            end
+        end.show(group.user_ids, {})
 
         group_hash = group.to_hash
-
-        providers = group_hash['GROUP']['RESOURCE_PROVIDER']
-        if(providers != nil)
-            puts
-            CLIHelper.print_header(str_h1 % "RESOURCE PROVIDERS", false)
-
-            CLIHelper::ShowTable.new(nil, self) do
-                column :"ZONE", "", :right, :size=>7 do |d|
-                    d['ZONE_ID']
-                end
-
-                column :"CLUSTER", "", :right, :size=>7 do |d|
-                    d['CLUSTER_ID'] == '10' ? 'ALL' : d['CLUSTER_ID']
-                end
-            end.show([providers].flatten, {})
-        end
 
         default_quotas = nil
 

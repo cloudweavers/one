@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -1095,7 +1095,7 @@ int AclManager::select_cb(void *nil, int num, char **values, char **names)
 
     int oid = atoi(values[0]);
 
-    long long rule_values[3];
+    long long rule_values[4];
 
     for ( int i = 0; i < 4; i++ )
     {

@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -302,10 +302,9 @@ module EBS
 
                 disk_id = vm["TEMPLATE/DISK[IMAGE_ID=#{image_id}]/DISK_ID"]
                 if !disk_id.nil?
-                    snapshot_id = vm.disk_snapshot(disk_id.to_i,
+                    snapshot_id = vm.disk_saveas(disk_id.to_i,
                         params["Description"]||ImageEC2.generate_uuid,
-                        OpenNebula::Image::IMAGE_TYPES[image["TYPE"].to_i],
-                        true)
+                        OpenNebula::Image::IMAGE_TYPES[image["TYPE"].to_i])
 
                     if OpenNebula::is_error?(snapshot_id)
                         return snapshot_id

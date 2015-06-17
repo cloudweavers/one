@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -95,8 +95,7 @@ void TransferManagerDriver::protocol(const string& message) const
         return;
     }
 
-    if ( vm->get_lcm_state() == VirtualMachine::FAILURE ||
-         vm->get_lcm_state() == VirtualMachine::LCM_INIT )
+    if ( vm->get_lcm_state() == VirtualMachine::LCM_INIT )
     {
         os.str("");
         os << "Ignored: " << message;
@@ -122,6 +121,8 @@ void TransferManagerDriver::protocol(const string& message) const
                 case VirtualMachine::PROLOG_MIGRATE:
                 case VirtualMachine::PROLOG_RESUME:
                 case VirtualMachine::PROLOG_UNDEPLOY:
+                case VirtualMachine::PROLOG_MIGRATE_POWEROFF:
+                case VirtualMachine::PROLOG_MIGRATE_SUSPEND:
                     lcm_action = LifeCycleManager::PROLOG_SUCCESS;
                     break;
 
@@ -135,7 +136,21 @@ void TransferManagerDriver::protocol(const string& message) const
                 case VirtualMachine::HOTPLUG_SAVEAS:
                 case VirtualMachine::HOTPLUG_SAVEAS_POWEROFF:
                 case VirtualMachine::HOTPLUG_SAVEAS_SUSPENDED:
-                    lcm_action = LifeCycleManager::SAVEAS_HOT_SUCCESS;
+                    lcm_action = LifeCycleManager::SAVEAS_SUCCESS;
+                    break;
+
+                case VirtualMachine::HOTPLUG_PROLOG_POWEROFF:
+                    lcm_action = LifeCycleManager::ATTACH_SUCCESS;
+                    break;
+
+                case VirtualMachine::HOTPLUG_EPILOG_POWEROFF:
+                    lcm_action = LifeCycleManager::DETACH_SUCCESS;
+                    break;
+
+                case VirtualMachine::DISK_SNAPSHOT_POWEROFF:
+                case VirtualMachine::DISK_SNAPSHOT_REVERT_POWEROFF:
+                case VirtualMachine::DISK_SNAPSHOT_DELETE_POWEROFF:
+                    lcm_action = LifeCycleManager::DISK_SNAPSHOT_SUCCESS;
                     break;
 
                 default:
@@ -167,6 +182,8 @@ void TransferManagerDriver::protocol(const string& message) const
                 case VirtualMachine::PROLOG_MIGRATE:
                 case VirtualMachine::PROLOG_RESUME:
                 case VirtualMachine::PROLOG_UNDEPLOY:
+                case VirtualMachine::PROLOG_MIGRATE_POWEROFF:
+                case VirtualMachine::PROLOG_MIGRATE_SUSPEND:
                     lcm_action = LifeCycleManager::PROLOG_FAILURE;
                     break;
 
@@ -180,7 +197,21 @@ void TransferManagerDriver::protocol(const string& message) const
                 case VirtualMachine::HOTPLUG_SAVEAS:
                 case VirtualMachine::HOTPLUG_SAVEAS_POWEROFF:
                 case VirtualMachine::HOTPLUG_SAVEAS_SUSPENDED:
-                    lcm_action = LifeCycleManager::SAVEAS_HOT_FAILURE;
+                    lcm_action = LifeCycleManager::SAVEAS_FAILURE;
+                    break;
+
+                case VirtualMachine::HOTPLUG_PROLOG_POWEROFF:
+                    lcm_action = LifeCycleManager::ATTACH_FAILURE;
+                    break;
+
+                case VirtualMachine::HOTPLUG_EPILOG_POWEROFF:
+                    lcm_action = LifeCycleManager::DETACH_FAILURE;
+                    break;
+
+                case VirtualMachine::DISK_SNAPSHOT_POWEROFF:
+                case VirtualMachine::DISK_SNAPSHOT_REVERT_POWEROFF:
+                case VirtualMachine::DISK_SNAPSHOT_DELETE_POWEROFF:
+                    lcm_action = LifeCycleManager::DISK_SNAPSHOT_FAILURE;
                     break;
 
                 default:

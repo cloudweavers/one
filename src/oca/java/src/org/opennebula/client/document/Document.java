@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,8 @@ public abstract class Document extends PoolElement
     private static final String CHMOD    = METHOD_PREFIX + "chmod";
     private static final String CLONE    = METHOD_PREFIX + "clone";
     private static final String RENAME   = METHOD_PREFIX + "rename";
+    private static final String LOCK     = METHOD_PREFIX + "lock";
+    private static final String UNLOCK   = METHOD_PREFIX + "unlock";
 
     /**
      * Creates a new Document representation.
@@ -237,6 +239,29 @@ public abstract class Document extends PoolElement
     public OneResponse rename(String name)
     {
         return client.call(RENAME, id, name);
+    }
+
+    /**
+     * Locks this object
+     *
+     * @param owner String to identify the application requestiong the lock
+     * @return In case of success, a boolean with true if the lock was granted,
+     * and false if the object is already locked.
+     */
+    public OneResponse lock(String owner)
+    {
+        return client.call(LOCK, id, owner);
+    }
+
+    /**
+     * Unlocks this object
+     *
+     * @param owner String to identify the application requestiong the lock
+     * @return If an error occurs the error message contains the reason.
+     */
+    public OneResponse unlock(String owner)
+    {
+        return client.call(UNLOCK, id, owner);
     }
 
     // =================================

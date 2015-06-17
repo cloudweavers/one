@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -119,7 +119,57 @@ public:
                          RequestAttributes& att);
 };
 
-/* -------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class ImageSnapshotRevert : public RequestManagerImage
+{
+public:
+    ImageSnapshotRevert():
+        RequestManagerImage("ImageSnapshotRevert",
+                "Reverts image state to a previous snapshot",
+                "A:sii"){};
+
+    ~ImageSnapshotRevert(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+                         RequestAttributes& att);
+};
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class ImageSnapshotFlatten : public RequestManagerImage
+{
+public:
+    ImageSnapshotFlatten():
+        RequestManagerImage("ImageSnapshotFlatten",
+                "Flattens the selected image snapshot",
+                "A:sii"){};
+
+    ~ImageSnapshotFlatten(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+                         RequestAttributes& att);
+};
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class ImageSnapshotDelete : public RequestManagerImage
+{
+public:
+    ImageSnapshotDelete():
+        RequestManagerImage("ImageSnapshotDelete",
+                "Deletes a snapshot from image",
+                "A:sii"){};
+
+    ~ImageSnapshotDelete(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+                         RequestAttributes& att);
+};
+
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 

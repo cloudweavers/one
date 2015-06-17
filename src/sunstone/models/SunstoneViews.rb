@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -87,10 +87,10 @@ class SunstoneViews
                 available << @views_config['groups'][group.name]
             end
 
-            gadmins       = group["TEMPLATE/GROUP_ADMINS"]
+            gadmins       = group.admin_ids
             gadmins_views = group["TEMPLATE/GROUP_ADMIN_VIEWS"]
 
-            if gadmins && gadmins.split(',').include?(user_name) && gadmins_views
+            if gadmins && gadmins.include?(user.id) && gadmins_views
                 views_array = gadmins_views.split(",")
                 available << views_array.each{|v| v.strip!}
             end

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -21,6 +21,8 @@
 #include "Clusterable.h"
 
 const string PoolObjectSQL::INVALID_NAME_CHARS = "&|:\\\";/'#{}$<>";
+
+const int PoolObjectSQL::LOCK_DB_EXPIRATION = 120;
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -223,6 +225,8 @@ int PoolObjectSQL::replace_template(
         return -1;
     }
 
+    delete old_tmpl;
+
     return 0;
 }
 
@@ -279,6 +283,8 @@ int PoolObjectSQL::append_template(
 
         return -1;
     }
+
+    delete old_tmpl;
 
     return 0;
 }
@@ -480,4 +486,68 @@ bool PoolObjectSQL::name_is_valid(const string& obj_name,
     }
 
     return true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int PoolObjectSQL::lock_db(const string& owner)
+{
+    if (locked && time(0) < lock_expires)
+    {
+        return -1;
+    }
+
+    locked       = true;
+    lock_expires = time(0) + LOCK_DB_EXPIRATION;
+    lock_owner   = owner;
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+void PoolObjectSQL::unlock_db(const string& owner)
+{
+    // Check if owner == lock_owner?
+
+    locked       = false;
+    lock_expires = 0;
+    lock_owner   = "";
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+string& PoolObjectSQL::lock_db_to_xml(string& xml) const
+{
+    ostringstream   oss;
+    int locked_int = locked ? 1 : 0;
+
+    oss << "<LOCK>"
+            << "<LOCKED>"           << locked_int   << "</LOCKED>"
+            << "<OWNER><![CDATA["   << lock_owner   << "]]></OWNER>"
+            << "<EXPIRES>"          << lock_expires << "</EXPIRES>"
+        << "</LOCK>";
+
+    xml = oss.str();
+    return xml;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int PoolObjectSQL::lock_db_from_xml()
+{
+    int rc = 0;
+    int locked_int;
+
+    rc += xpath(locked_int,   "/*/LOCK/LOCKED", 0);
+    rc += xpath(lock_owner,   "/*/LOCK/OWNER", "");
+    rc += xpath(lock_expires, "/*/LOCK/EXPIRES", 0);
+
+    locked = locked_int;
+
+    return rc;
 }

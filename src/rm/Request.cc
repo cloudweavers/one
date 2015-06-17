@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -573,6 +573,23 @@ void Request::success_response(const string& val, RequestAttributes& att)
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+void Request::success_response(bool val, RequestAttributes& att)
+{
+    vector<xmlrpc_c::value> arrayData;
+
+    arrayData.push_back(xmlrpc_c::value_boolean(true));
+    arrayData.push_back(xmlrpc_c::value_boolean(val));
+    arrayData.push_back(xmlrpc_c::value_int(SUCCESS));
+
+
+    xmlrpc_c::value_array arrayresult(arrayData);
+
+    *(att.retval) = arrayresult;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 string Request::object_name(PoolObjectSQL::ObjectType ob)
 {
     switch (ob)
@@ -603,6 +620,8 @@ string Request::object_name(PoolObjectSQL::ObjectType ob)
             return "zone";
         case PoolObjectSQL::SECGROUP:
             return "security group";
+        case PoolObjectSQL::VDC:
+            return "VDC";
         default:
             return "-";
       }

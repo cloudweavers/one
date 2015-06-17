@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -84,6 +84,16 @@ public:
     {
         return set<int> (collection_set);
     };
+
+    /**
+     * Returns true if the collection contains the given id
+     * @param id ID to search
+     * @return true if the collection contains the given id
+     */
+    bool collection_contains(int id)
+    {
+        return collection_set.count(id) > 0;
+    }
 
 private:
 

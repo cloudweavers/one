@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -532,7 +532,7 @@ void VirtualMachineManager::save_action(
     VirtualMachine *                    vm;
     const VirtualMachineManagerDriver * vmd;
 
-    string        hostname, vnm_mad;
+    string        hostname, vnm_mad, checkpoint_file;
     string        vm_tmpl;
     string *      drv_msg;
     ostringstream os;
@@ -566,13 +566,15 @@ void VirtualMachineManager::save_action(
             goto error_previous_history;
         }
 
-        hostname = vm->get_previous_hostname();
-        vnm_mad  = vm->get_previous_vnm_mad();
+        hostname        = vm->get_previous_hostname();
+        vnm_mad         = vm->get_previous_vnm_mad();
+        checkpoint_file = vm->get_previous_checkpoint_file();
     }
     else
     {
-        hostname = vm->get_hostname();
-        vnm_mad  = vm->get_vnm_mad();
+        hostname        = vm->get_hostname();
+        vnm_mad         = vm->get_vnm_mad();
+        checkpoint_file = vm->get_checkpoint_file();
     }
 
     // Invoke driver method
@@ -584,7 +586,7 @@ void VirtualMachineManager::save_action(
         vm->get_deploy_id(),
         "",
         "",
-        vm->get_checkpoint_file(),
+        checkpoint_file,
         "",
         "",
         "",

@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -21,6 +21,7 @@ export PATH=/bin:/sbin:/usr/bin:$PATH
 AWK=awk
 BASH=bash
 CUT=cut
+CEPH=ceph
 DATE=date
 DD=dd
 DF=df
@@ -146,6 +147,33 @@ function exec_and_log
         fi
         exit $EXEC_LOG_RC
     fi
+}
+
+# This function executes $1 and returns stdout
+# If a second parameter is present it is used as the error message when
+# the command fails
+function monitor_and_log
+{
+    EXEC_OUT=`bash -s 2>/dev/null <<EOF
+export LANG=C
+export LC_ALL=C
+set -xv
+$1
+EOF`
+    EXEC_RC=$?
+
+    if [ $EXEC_RC -ne 0 ]; then
+
+        if [ -n "$2" ]; then
+            log_error "Command \"$2\" failed: $EXEC_OUT"
+        else
+            log_error "Command \"$1\" failed: $EXEC_OUT"
+        fi
+
+        exit $EXEC_RC
+    fi
+
+    echo $EXEC_OUT
 }
 
 # Executes a command, if it fails returns error message and exits. Similar to
@@ -292,7 +320,7 @@ function mkfs_command {
             OPTS="-F"
             ;;
 
-        "reiserfs")
+        "reiserfs"|"xfs")
             OPTS="-f -q"
             ;;
 
@@ -327,7 +355,9 @@ function mkfs_command {
             return 0
             ;;
         *)
-            OPTS=""
+            echo ""
+            echo "Filesystem '$FSTYPE' not valid." 1>&2
+            return 1
             ;;
     esac
 
@@ -357,7 +387,9 @@ EOF`
     fi
 }
 
-#This function executes $2 at $1 host and returns stdout
+# This function executes $2 at $1 host and returns stdout
+# If $3 is present, it is used as the error message when
+# the command fails
 function ssh_monitor_and_log
 {
     SSH_EXEC_OUT=`$SSH $1 sh -s 2>/dev/null <<EOF
@@ -368,8 +400,12 @@ EOF`
     SSH_EXEC_RC=$?
 
     if [ $SSH_EXEC_RC -ne 0 ]; then
-        log_error "Command \"$2\" failed: $SSH_EXEC_OUT"
-        error_message "Cannot monitor $1"
+
+        if [ -n "$3" ]; then
+            log_error "Command \"$3\" failed: $SSH_EXEC_OUT"
+        else
+            log_error "Command \"$2\" failed: $SSH_EXEC_OUT"
+        fi
 
         exit $SSH_EXEC_RC
     fi

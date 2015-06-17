@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -34,7 +34,7 @@ var create_cluster_tmpl ='<div class="row">\
     <div class="large-6 columns">\
       <dl class="tabs right-info-tabs text-center right" data-tab>\
           <dd class="active"><a href="#tab-hostsTab"><i class="fa fa-hdd-o"></i><br>'+tr("Hosts")+'</a></dd>\
-          <dd><a href="#tab-vnetsTab"><i class="fa fa-upload"></i><br>'+tr("VNets")+'</a></dd>\
+          <dd><a href="#tab-vnetsTab"><i class="fa fa-globe"></i><br>'+tr("VNets")+'</a></dd>\
           <dd><a href="#tab-datastoresTab"><i class="fa fa-folder-open"></i><br>'+tr("Datastores")+'</a></dd>\
       </dl>\
     </div>\
@@ -536,7 +536,7 @@ var clusters_tab = {
     showOnTopMenu: false,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="cluster_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="cluster_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-th"></i>&emsp;'+tr("Clusters"),
     info_header: '<i class="fa fa-fw fa-th"></i>&emsp;'+tr("Cluster"),
     subheader: '<span/> <small></small>&emsp;',

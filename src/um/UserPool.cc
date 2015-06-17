@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -36,7 +36,6 @@
 const char * UserPool::CORE_AUTH    = "core";
 const char * UserPool::SERVER_AUTH  = "server*";
 const char * UserPool::PUBLIC_AUTH  = "public";
-const char * UserPool::DEFAULT_AUTH = "default";
 
 const char * UserPool::SERVER_NAME  = "serveradmin";
 
@@ -91,7 +90,6 @@ UserPool::UserPool(SqlDB * db,
         }
 
         oneadmin_name = oneadmin_user->get_name();
-
         oneadmin_user->unlock();
 
         return;
@@ -169,6 +167,13 @@ UserPool::UserPool(SqlDB * db,
 
     for (i=0 ; i < 5; i++)
     {
+        struct stat file_stat;
+
+        if ( stat(filenames[i].c_str(), &file_stat) == 0 )
+        {
+            goto erro_exists;
+        }
+
         int cfile = creat(filenames[i].c_str(), S_IRUSR | S_IWUSR);
         close(cfile);
 
@@ -240,6 +245,12 @@ error_no_open:
     oss << "Could not create configuration file "<< filenames[i];
     goto error_common;
 
+erro_exists:
+    oss << "Password file " << filenames[i] << " already exists "
+        << "but OpenNebula is boostraping the database. Check your "
+        << "database configuration in oned.conf.";
+    goto error_common;
+
 error_oneadmin:
     oss << "Error creating oneadmin user: " << error_str;
     goto error_common;
@@ -249,7 +260,7 @@ error_serveradmin:
 
 error_common:
     NebulaLog::log("ONE",Log::ERROR,oss);
-    throw;
+    throw runtime_error(oss.str());
 }
 
 /* -------------------------------------------------------------------------- */
@@ -701,6 +712,7 @@ bool UserPool::authenticate_external(const string&  username,
     string mad_pass;
     string error_str;
     string tmp_str;
+    string default_auth;
 
     Nebula&     nd      = Nebula::instance();
     AuthManager * authm = nd.get_authm();
@@ -722,7 +734,9 @@ bool UserPool::authenticate_external(const string&  username,
     }
 
     //Initialize authentication request and call the driver
-    ar.add_authenticate(UserPool::DEFAULT_AUTH, username,"-",token);
+    nd.get_configuration_attribute("DEFAULT_AUTH",default_auth);
+
+    ar.add_authenticate(default_auth, username,"-",token);
 
     authm->trigger(AuthManager::AUTHENTICATE, &ar);
     ar.wait();

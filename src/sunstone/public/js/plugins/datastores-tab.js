@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -210,16 +210,19 @@ var create_datastore_tmpl =
               <input type="text" name="ceph_secret" id="ceph_secret" />\
           </div>\
           <div class="large-6 columns">\
+              <label class="fs" for="staging_dir">' + tr("Staging Dir") +
+                '<span class="tip">'+
+                  tr("FS: Default path where images will be temporarily copied to in the host carrying out the registration operation (chosen from the bridge list). If empty, defaults to /var/tmp.") + '<br><br>' + 
+                  tr("Ceph: Default path for image operations in the OpenNebula Ceph frontend.") + 
+                '</span>'+
+              '</label>\
+              <input type="text" name="staging_dir" id="staging_dir" />\
+          </div>\
+          <div class="large-6 columns">\
               <label for="rbd_format">' + tr("RBD Format") +
                 '<span class="tip">'+tr("By default RBD Format 2 will be used. If RBD_FORMAT=2 is specified then when instantiating non-persistent images the Ceph driver will perform rbd snap instead of rbd copy.")+'</span>'+
               '</label>\
               <input type="text" name="rbd_format" id="rbd_format" />\
-          </div>\
-          <div class="large-6 columns">\
-              <label for="staging_dir">' + tr("Staging Dir") +
-                '<span class="tip">'+tr("Default path for image operations in the OpenNebula Ceph frontend.")+'</span>'+
-              '</label>\
-              <input type="text" name="staging_dir" id="staging_dir" />\
           </div>\
         </div>\
         <div class="reveal-footer">\
@@ -489,6 +492,28 @@ var datastore_actions = {
         },
         error: onError,
         notify: true
+    },
+
+    "Datastore.enable" : {
+        type: "multiple",
+        call: OpenNebula.Datastore.enable,
+        callback: function (req) {
+            Sunstone.runAction("Datastore.show",req.request.data[0]);
+        },
+        elements: datastoreElements,
+        error: onError,
+        notify: true
+    },
+
+    "Datastore.disable" : {
+        type: "multiple",
+        call: OpenNebula.Datastore.disable,
+        callback: function (req) {
+            Sunstone.runAction("Datastore.show",req.request.data[0]);
+        },
+        elements: datastoreElements,
+        error: onError,
+        notify: true
     }
 };
 
@@ -538,6 +563,16 @@ var datastore_buttons = {
         layout: "del",
         condition: mustBeAdmin
     },
+    "Datastore.enable" : {
+        type: "action",
+        layout: "more_select",
+        text: tr("Enable")
+    },
+    "Datastore.disable" : {
+        type: "action",
+        layout: "more_select",
+        text: tr("Disable")
+    }
 }
 
 var datastore_info_panel = {
@@ -553,7 +588,7 @@ var datastores_tab = {
     buttons: datastore_buttons,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="datastore_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="datastore_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-folder-open"></i>&emsp;'+tr("Datastores"),
     info_header: '<i class="fa fa-fw fa-folder-open"></i>&emsp;'+tr("Datastore"),
     subheader: '<span/> <small></small>&emsp;',
@@ -571,6 +606,7 @@ var datastores_tab = {
           <th>'+tr("TM MAD")+'</th>\
           <th>'+tr("DS MAD")+'</th>\
           <th>'+tr("Type")+'</th>\
+          <th>'+tr("Status")+'</th>\
         </tr>\
       </thead>\
       <tbody id="tbodydatastores">\
@@ -632,7 +668,8 @@ function datastoreElementArray(element_json){
         element.BASE_PATH,
         element.TM_MAD,
         element.DS_MAD,
-        ds_type_str.toLowerCase().split('_')[0]
+        ds_type_str.toLowerCase().split('_')[0],
+        OpenNebula.Helper.resource_state("datastore",element.STATE)
     ];
 }
 
@@ -721,6 +758,11 @@ function updateDatastoreInfo(request,ds){
               cluster_str  +
               '</tr>\
               <tr>\
+                 <td class="key_td">'+tr("State")+'</td>\
+                 <td class="value_td">'+OpenNebula.Helper.resource_state("datastore",info.STATE)+'</td>\
+                 <td></td>\
+              </tr>\
+              <tr>\
                  <td class="key_td">'+tr("Base path")+'</td>\
                  <td class="value_td">'+info.BASE_PATH+'</td>\
                  <td></td>\
@@ -751,7 +793,7 @@ function updateDatastoreInfo(request,ds){
             insert_extended_template_table(info.TEMPLATE,
                                          "Datastore",
                                          info.ID,
-                                         "Attributes") +
+                                         tr("Attributes")) +
         '</div>\
       </div>';
 
@@ -1078,6 +1120,8 @@ function select_filesystem(){
     $('input#base_path').removeAttr('disabled');
     $('input#limit_mb').removeAttr('disabled');
     $('input#restricted_dirs').removeAttr('disabled');
+    $('label[for="bridge_list"],input#bridge_list').parent().fadeIn();
+    $('label[for="staging_dir"],input#staging_dir').parent().fadeIn();
 }
 
 function select_vmware_vmfs(){

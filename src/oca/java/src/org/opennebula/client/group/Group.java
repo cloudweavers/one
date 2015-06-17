@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ public class Group extends PoolElement{
     private static final String INFO            = METHOD_PREFIX + "info";
     private static final String DELETE          = METHOD_PREFIX + "delete";
     private static final String QUOTA           = METHOD_PREFIX + "quota";
-    private static final String ADD_PROVIDER    = METHOD_PREFIX + "addprovider";
-    private static final String DEL_PROVIDER    = METHOD_PREFIX + "delprovider";
     private static final String UPDATE          = METHOD_PREFIX + "update";
+    private static final String ADD_ADMIN       = METHOD_PREFIX + "addadmin";
+    private static final String DEL_ADMIN       = METHOD_PREFIX + "deladmin";
 
     /**
      * Creates a new Group representation.
@@ -112,36 +112,6 @@ public class Group extends PoolElement{
     }
 
     /**
-     * Adds a resource provider to this group
-     *
-     * @param client XML-RPC Client.
-     * @param id The group id.
-     * @param zoneId The zone id.
-     * @param clusterId The cluster id.
-     * @return A encapsulated response.
-     */
-    public static OneResponse addProvider(Client client, int id,
-        int zoneId, int clusterId)
-    {
-        return client.call(ADD_PROVIDER, id, zoneId, clusterId);
-    }
-
-    /**
-     * Deletes a resource provider from this group
-     *
-     * @param client XML-RPC Client.
-     * @param id The group id.
-     * @param zoneId The zone id.
-     * @param clusterId The cluster id.
-     * @return A encapsulated response.
-     */
-    public static OneResponse delProvider(Client client, int id,
-        int zoneId, int clusterId)
-    {
-        return client.call(DEL_PROVIDER, id, zoneId, clusterId);
-    }
-
-    /**
      * Replaces the template contents.
      *
      * @param client XML-RPC Client.
@@ -154,6 +124,32 @@ public class Group extends PoolElement{
         boolean append)
     {
         return client.call(UPDATE, id, new_template, append ? 1 : 0);
+    }
+
+    /**
+     * Adds a User to the Group administrators set
+     *
+     * @param client XML-RPC Client.
+     * @param id The group id of the target group we want to modify.
+     * @param uid User ID
+     * @return If successful the message contains the group id.
+     */
+    public static OneResponse addAdmin(Client client, int id, int uid)
+    {
+        return client.call(ADD_ADMIN, id, uid);
+    }
+
+    /**
+     * Removes a User from the Group administrators set
+     *
+     * @param client XML-RPC Client.
+     * @param id The group id of the target group we want to modify.
+     * @param uid User ID
+     * @return If successful the message contains the group id.
+     */
+    public static OneResponse delAdmin(Client client, int id, int uid)
+    {
+        return client.call(DEL_ADMIN, id, uid);
     }
 
     // =================================
@@ -195,30 +191,6 @@ public class Group extends PoolElement{
     }
 
     /**
-     * Adds a resource provider to this group
-     *
-     * @param zoneId The zone id.
-     * @param clusterId The cluster id.
-     * @return A encapsulated response.
-     */
-    public OneResponse addProvider(int zoneId, int clusterId)
-    {
-        return addProvider(client, id, zoneId, clusterId);
-    }
-
-    /**
-     * Deletes a resource provider from this group
-     *
-     * @param zoneId The zone id.
-     * @param clusterId The cluster id.
-     * @return A encapsulated response.
-     */
-    public OneResponse delProvider(int zoneId, int clusterId)
-    {
-        return delProvider(client, id, zoneId, clusterId);
-    }
-
-    /**
      * Replaces the template contents.
      *
      * @param new_template New template contents
@@ -241,6 +213,28 @@ public class Group extends PoolElement{
         return update(client, id, new_template, append);
     }
 
+    /**
+     * Adds a User to the Group administrators set
+     *
+     * @param uid User ID
+     * @return If successful the message contains the group id.
+     */
+    public OneResponse addAdmin(int uid)
+    {
+        return addAdmin(client, id, uid);
+    }
+
+    /**
+     * Removes a User from the Group administrators set
+     *
+     * @param uid User ID
+     * @return If successful the message contains the group id.
+     */
+    public OneResponse delAdmin(int uid)
+    {
+        return delAdmin(client, id, uid);
+    }
+
     // =================================
     // Helpers
     // =================================
@@ -254,6 +248,18 @@ public class Group extends PoolElement{
     public boolean contains(int uid)
     {
         String res = xpath("USERS/ID[.="+uid+"]");
+        return res != null && res.equals(""+uid);
+    }
+
+    /**
+     * Returns whether or not the user is an admin of this group
+     *
+     * @param uid The user ID.
+     * @return Whether or not the user is an admin of this group
+     */
+    public boolean containsAdmin(int uid)
+    {
+        String res = xpath("ADMINS/ID[.="+uid+"]");
         return res != null && res.equals(""+uid);
     }
 }

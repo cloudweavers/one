@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -27,24 +27,160 @@ function loadVNC(){
         "use strict";
     Util.load_scripts(["webutil.js", "base64.js", "websock.js", "des.js",
                        "keysymdef.js", "keyboard.js", "input.js", "display.js",
-                       "jsunzip.js", "rfb.js"]);
+                       "jsunzip.js", "rfb.js", "keysym.js"]);
 }
 loadVNC();
 
 var VNCstates=[
-  tr("RUNNING"),
-  tr("SHUTDOWN"),
-  tr("SHUTDOWN_POWEROFF"),
-  tr("UNKNOWN"),
-  tr("HOTPLUG"),
-  tr("CANCEL"),
-  tr("MIGRATE"),
-  tr("HOTPLUG_SNAPSHOT"),
-  tr("HOTPLUG_NIC"),
-  tr("HOTPLUG_SAVEAS"),
-  tr("HOTPLUG_SAVEAS_POWEROFF"),
-  tr("HOTPLUG_SAVEAS_SUSPENDED"),
-  tr("SHUTDOWN_UNDEPLOY")];
+  OpenNebula.VM.lcm_state.RUNNING,
+  OpenNebula.VM.lcm_state.SHUTDOWN,
+  OpenNebula.VM.lcm_state.SHUTDOWN_POWEROFF,
+  OpenNebula.VM.lcm_state.UNKNOWN,
+  OpenNebula.VM.lcm_state.HOTPLUG,
+  OpenNebula.VM.lcm_state.CANCEL,
+  OpenNebula.VM.lcm_state.MIGRATE,
+  OpenNebula.VM.lcm_state.HOTPLUG_SNAPSHOT,
+  OpenNebula.VM.lcm_state.HOTPLUG_NIC,
+  OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS,
+  OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS_POWEROFF,
+  OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS_SUSPENDED,
+  OpenNebula.VM.lcm_state.SHUTDOWN_UNDEPLOY];
+
+var state_actions = {
+    0: //OpenNebula.VM.state.INIT:
+        ["VM.delete", "VM.delete_recreate", "VM.resize"],
+
+    1: //OpenNebula.VM.state.PENDING:
+        ["VM.delete", "VM.delete_recreate", "VM.hold", "VM.deploy"],
+
+    2: //OpenNebula.VM.state.HOLD:
+        ["VM.delete", "VM.delete_recreate", "VM.release", "VM.deploy"],
+
+    3: //OpenNebula.VM.state.ACTIVE:
+        ["VM.delete", "VM.delete_recreate", "VM.recover"],
+
+    4: //OpenNebula.VM.state.STOPPED:
+        ["VM.delete", "VM.delete_recreate", "VM.resume", "VM.deploy"],
+
+    5: //OpenNebula.VM.state.SUSPENDED:
+        ["VM.delete", "VM.resume", "VM.saveas", "VM.disk_snapshot_cancel", "VM.stop", "VM.shutdown_hard"],
+    6: //OpenNebula.VM.state.DONE:
+        [],
+
+    7: //OpenNebula.VM.state.FAILED:
+        ["VM.delete", "VM.delete_recreate", "VM.resize"],
+
+    8: //OpenNebula.VM.state.POWEROFF:
+        ["VM.delete", "VM.resume", "VM.resize", "VM.attachdisk", "VM.detachdisk", "VM.attachnic", "VM.detachnic", "VM.saveas", "VM.disk_snapshot_cancel", "VM.migrate", "VM.undeploy", "VM.undeploy_hard", "VM.shutdown_hard"],
+
+    9: //OpenNebula.VM.state.UNDEPLOYED:
+        ["VM.delete", "VM.delete_recreate", "VM.resume", "VM.resize", "VM.deploy"],
+}
+
+var lcm_state_actions = {
+    0: //OpenNebula.VM.lcm_state.LCM_INIT:
+        [],
+    1: //OpenNebula.VM.lcm_state.PROLOG:
+        [],
+    2: //OpenNebula.VM.lcm_state.BOOT:
+        [],
+    3: //OpenNebula.VM.lcm_state.RUNNING:
+        ["VM.shutdown", "VM.shutdown_hard", "VM.stop", "VM.suspend", "VM.reboot", "VM.reboot_hard", "VM.resched", "VM.unresched", "VM.poweroff", "VM.poweroff_hard", "VM.undeploy", "VM.undeploy_hard", "VM.migrate", "VM.migrate_live", "VM.attachdisk", "VM.detachdisk", "VM.attachnic", "VM.detachnic", "VM.saveas", "VM.disk_snapshot_cancel"],
+    4: //OpenNebula.VM.lcm_state.MIGRATE:
+        [],
+    5: //OpenNebula.VM.lcm_state.SAVE_STOP:
+        [],
+    6: //OpenNebula.VM.lcm_state.SAVE_SUSPEND:
+        [],
+    7: //OpenNebula.VM.lcm_state.SAVE_MIGRATE:
+        [],
+    8: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE:
+        [],
+    9: //OpenNebula.VM.lcm_state.PROLOG_RESUME:
+        [],
+    10: //OpenNebula.VM.lcm_state.EPILOG_STOP:
+        [],
+    11: //OpenNebula.VM.lcm_state.EPILOG:
+        [],
+    12: //OpenNebula.VM.lcm_state.SHUTDOWN:
+        [],
+    13: //OpenNebula.VM.lcm_state.CANCEL:
+        [],
+    14: //OpenNebula.VM.lcm_state.FAILURE:
+        [],
+    15: //OpenNebula.VM.lcm_state.CLEANUP_RESUBMIT:
+        [],
+    16: //OpenNebula.VM.lcm_state.UNKNOWN:
+        ["VM.shutdown", "VM.shutdown_hard", "VM.resched", "VM.unresched", "VM.poweroff", "VM.poweroff_hard", "VM.undeploy", "VM.undeploy_hard", "VM.migrate", "VM.migrate_live", "VM.disk_snapshot_cancel", "VM.resume"],
+    17: //OpenNebula.VM.lcm_state.HOTPLUG:
+        [],
+    18: //OpenNebula.VM.lcm_state.SHUTDOWN_POWEROFF:
+        [],
+    19: //OpenNebula.VM.lcm_state.BOOT_UNKNOWN:
+        [],
+    20: //OpenNebula.VM.lcm_state.BOOT_POWEROFF:
+        [],
+    21: //OpenNebula.VM.lcm_state.BOOT_SUSPENDED:
+        [],
+    22: //OpenNebula.VM.lcm_state.BOOT_STOPPED:
+        [],
+    23: //OpenNebula.VM.lcm_state.CLEANUP_DELETE:
+        [],
+    24: //OpenNebula.VM.lcm_state.HOTPLUG_SNAPSHOT:
+        [],
+    25: //OpenNebula.VM.lcm_state.HOTPLUG_NIC:
+        [],
+    26: //OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS:
+        [],
+    27: //OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS_POWEROFF:
+        [],
+    28: //OpenNebula.VM.lcm_state.HOTPLUG_SAVEAS_SUSPENDED:
+        [],
+    29: //OpenNebula.VM.lcm_state.SHUTDOWN_UNDEPLOY:
+        [],
+    30: //OpenNebula.VM.lcm_state.EPILOG_UNDEPLOY:
+        [],
+    31: //OpenNebula.VM.lcm_state.PROLOG_UNDEPLOY:
+        [],
+    32: //OpenNebula.VM.lcm_state.BOOT_UNDEPLOY:
+        [],
+    33: //OpenNebula.VM.lcm_state.HOTPLUG_PROLOG_POWEROFF:
+        [],
+    34: //OpenNebula.VM.lcm_state.HOTPLUG_EPILOG_POWEROFF:
+        [],
+    35: //OpenNebula.VM.lcm_state.BOOT_MIGRATE:
+        [],
+    36: //OpenNebula.VM.lcm_state.BOOT_FAILURE:
+        [],
+    37: //OpenNebula.VM.lcm_state.BOOT_MIGRATE_FAILURE:
+        [],
+    38: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE_FAILURE:
+        [],
+    39: //OpenNebula.VM.lcm_state.PROLOG_FAILURE:
+        [],
+    40: //OpenNebula.VM.lcm_state.EPILOG_FAILURE:
+        [],
+    41: //OpenNebula.VM.lcm_state.EPILOG_STOP_FAILURE:
+        [],
+    42: //OpenNebula.VM.lcm_state.EPILOG_UNDEPLOY_FAILURE:
+        [],
+    43: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE_POWEROFF:
+        [],
+    44: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE_POWEROFF_FAILURE:
+        [],
+    45: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE_SUSPEND:
+        [],
+    46: //OpenNebula.VM.lcm_state.PROLOG_MIGRATE_SUSPEND_FAILURE:
+        [],
+    47: //OpenNebula.VM.lcm_state.BOOT_UNDEPLOY_FAILURE:
+        [],
+    48: //OpenNebula.VM.lcm_state.BOOT_STOPPED_FAILURE:
+        [],
+    49: //OpenNebula.VM.lcm_state.PROLOG_RESUME_FAILURE:
+        [],
+    50: //OpenNebula.VM.lcm_state.PROLOG_UNDEPLOY_FAILURE:
+        []
+}
 
 //Permanent storage for last value of aggregated network usage
 //Used to calculate bandwidth
@@ -120,7 +256,7 @@ var deploy_vm_tmpl ='\
       </fieldset>\
     </div>\
     <dl class="accordion" id="advanced_toggle" data-accordion>\
-         <dd><a href="#advanced_deploy"> '+tr("Advanced options")+'</a></dd>\
+         <dd class="accordion-navigation"><a href="#advanced_deploy"> '+tr("Advanced options")+'</a></dd>\
     </dl>\
          <div id="advanced_deploy" class="row content">\
             <div class="row">\
@@ -167,7 +303,7 @@ var migrate_vm_tmpl ='\
     <br>\
     <br>\
     <dl class="accordion" id="advanced_migrate_toggle" data-accordion>\
-         <dd><a href="#advanced_migrate"> '+tr("Advanced options")+'</a></dd>\
+         <dd class="accordion-navigation"><a href="#advanced_migrate"> '+tr("Advanced options")+'</a></dd>\
     </dl>\
     <div id="advanced_migrate" class="content">\
         <div class="row">\
@@ -178,6 +314,11 @@ var migrate_vm_tmpl ='\
                 </label>\
             </div>\
         </div>\
+        <br>\
+        <fieldset class="migrate_vm_ds_selection">\
+          <legend>'+tr("Select a datastore")+'</legend>\
+          '+generateDatastoreTableSelect("migrate_vm_ds")+'\
+        </fieldset>\
     </div>\
     <div class="form_buttons reveal-footer">\
       <div class="form_buttons">\
@@ -268,6 +409,12 @@ var vm_actions = {
         notify: true
     },
 
+    "VM.silent_deploy_action" : {
+        type: "single",
+        call: OpenNebula.VM.deploy,
+        error: onError
+    },    
+
     "VM.migrate" : {
         type: "custom",
         call: function(){
@@ -343,15 +490,6 @@ var vm_actions = {
         notify: true
     },
 
-    "VM.boot" : {
-        type: "multiple",
-        call: OpenNebula.VM.restart,
-        callback: vmShow,
-        elements: vmElements,
-        error: onError,
-        notify: true
-    },
-
     "VM.reboot_hard" : {
         type: "multiple",
         call: OpenNebula.VM.reset,
@@ -418,6 +556,17 @@ var vm_actions = {
     "VM.saveas" : {
         type: "single",
         call: OpenNebula.VM.saveas,
+        callback: function(request) {
+            Sunstone.runAction("VM.show", request.request.data[0]);
+            OpenNebula.Helper.clear_cache("IMAGE");
+        },
+        error:onError,
+        notify: true
+    },
+
+    "VM.disk_snapshot_cancel" : {
+        type: "single",
+        call: OpenNebula.VM.disk_snapshot_cancel,
         callback: function(request) {
             Sunstone.runAction("VM.show", request.request.data[0]);
             OpenNebula.Helper.clear_cache("IMAGE");
@@ -765,30 +914,28 @@ var vm_buttons = {
         text: tr("Change owner"),
         select: "User",
         layout: "user_select",
-        tip: tr("Select the new owner")+":",
-        condition: mustBeAdmin
+        tip: tr("Select the new owner")+":"
     },
     "VM.chgrp" : {
         type: "confirm_with_select",
         text: tr("Change group"),
         select: "Group",
         layout: "user_select",
-        tip: tr("Select the new group")+":",
-        condition: mustBeAdmin
+        tip: tr("Select the new group")+":"
     },
     "VM.deploy" : {
         type: "action",
         text: tr("Deploy"),
         tip: tr("This will deploy the selected VMs on the chosen host"),
         layout: "vmsplanification_buttons",
-        condition: mustBeAdmin
+        custom_classes : "state-dependent"
     },
     "VM.migrate" : {
         type: "action",
         text: tr("Migrate"),
         tip: tr("This will migrate the selected VMs to the chosen host"),
         layout: "vmsplanification_buttons",
-        condition: mustBeAdmin
+        custom_classes : "state-dependent"
 
     },
     "VM.migrate_live" : {
@@ -796,127 +943,142 @@ var vm_buttons = {
         text: tr("Migrate") + ' <span class="label secondary radius">live</span>',
         tip: tr("This will live-migrate the selected VMs to the chosen host"),
         layout: "vmsplanification_buttons",
-        condition: mustBeAdmin
+        custom_classes : "state-dependent"
     },
     "VM.hold" : {
         type: "action",
         text: tr("Hold"),
         tip: tr("This will hold selected pending VMs from being deployed"),
         layout: "vmsplanification_buttons",
+        custom_classes : "state-dependent"
     },
     "VM.release" : {
         type: "action",
         text: tr("Release"),
         layout: "vmsplanification_buttons",
-        tip: tr("This will release held machines")
+        tip: tr("This will release held machines"),
+        custom_classes : "state-dependent"
     },
     "VM.suspend" : {
         type: "action",
         text: tr("Suspend"),
         layout: "vmspause_buttons",
-        tip: tr("This will suspend selected machines")
+        tip: tr("This will suspend selected machines"),
+        custom_classes : "state-dependent"
     },
     "VM.resume" : {
         type: "action",
         text: '<i class="fa fa-play"/>',
         layout: "vmsplay_buttons",
-        tip: tr("This will resume selected VMs")
+        tip: tr("This will resume selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.stop" : {
         type: "action",
         text: tr("Stop"),
         layout: "vmsstop_buttons",
-        tip: tr("This will stop selected VMs")
-    },
-    "VM.boot" : {
-        type: "action",
-        text: tr("Boot"),
-        layout: "vmsplanification_buttons",
-        tip: tr("This will force the hypervisor boot action of VMs stuck in UNKNOWN or BOOT state")
+        tip: tr("This will stop selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.reboot" : {
         type: "action",
         text: tr("Reboot"),
         layout: "vmsrepeat_buttons",
-        tip: tr("This will send a reboot action to running VMs")
+        tip: tr("This will send a reboot action to running VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.reboot_hard" : {
         type: "action",
         text: tr("Reboot") + ' <span class="label secondary radius">hard</span>',
         layout: "vmsrepeat_buttons",
-        tip: tr("This will perform a hard reboot on selected VMs")
+        tip: tr("This will perform a hard reboot on selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.poweroff" : {
         type: "action",
         text: tr("Power Off"),
         layout: "vmspause_buttons",
-        tip: tr("This will send a power off signal to running VMs. They can be resumed later.")
+        tip: tr("This will send a power off signal to running VMs. They can be resumed later."),
+        custom_classes : "state-dependent"
     },
     "VM.poweroff_hard" : {
         type: "action",
         text: tr("Power Off") + ' <span class="label secondary radius">hard</span>',
         layout: "vmspause_buttons",
-        tip: tr("This will send a forced power off signal to running VMs. They can be resumed later.")
+        tip: tr("This will send a forced power off signal to running VMs. They can be resumed later."),
+        custom_classes : "state-dependent"
     },
     "VM.undeploy" : {
         type: "action",
         text: tr("Undeploy"),
         layout: "vmsstop_buttons",
-        tip: tr("Shuts down the given VM. The VM is saved in the system Datastore.")
+        tip: tr("Shuts down the given VM. The VM is saved in the system Datastore."),
+        custom_classes : "state-dependent"
     },
     "VM.undeploy_hard" : {
         type: "action",
         text: tr("Undeploy") + ' <span class="label secondary radius">hard</span>',
         layout: "vmsstop_buttons",
-        tip: tr("Shuts down the given VM. The VM is saved in the system Datastore.")
+        tip: tr("Shuts down the given VM. The VM is saved in the system Datastore."),
+        custom_classes : "state-dependent"
     },
     "VM.shutdown" : {
         type: "confirm",
         text: tr("Shutdown"),
         layout: "vmsdelete_buttons",
-        tip: tr("This will initiate the shutdown process in the selected VMs")
+        tip: tr("This will initiate the shutdown process in the selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.shutdown_hard" : {
         type: "confirm",
         text: tr("Shutdown") + ' <span class="label secondary radius">hard</span>',
         layout: "vmsdelete_buttons",
-        tip: tr("This will initiate the shutdown-hard (forced) process in the selected VMs")
+        tip: tr("This will initiate the shutdown-hard (forced) process in the selected VMs"),
+        custom_classes : "state-dependent"
     },
 
     "VM.delete" : {
         type: "confirm",
         text: tr("Delete"),
         layout: "vmsdelete_buttons",
-        tip: tr("This will delete the selected VMs from the database")
+        tip: tr("This will delete the selected VMs from the database"),
+        custom_classes : "state-dependent"
     },
     "VM.delete_recreate" : {
         type: "confirm",
         text: tr("Delete") + ' <span class="label secondary radius">recreate</span>',
         layout: "vmsrepeat_buttons",
-        tip: tr("This will delete and recreate VMs to PENDING state")
+        tip: tr("This will delete and recreate VMs to PENDING state"),
+        custom_classes : "state-dependent"
     },
     "VM.resched" : {
         type: "action",
         text: tr("Reschedule"),
         layout: "vmsplanification_buttons",
-        tip: tr("This will reschedule selected VMs")
+        tip: tr("This will reschedule selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.unresched" : {
         type: "action",
         text: tr("Un-Reschedule"),
         layout: "vmsplanification_buttons",
-        tip: tr("This will cancel the rescheduling for the selected VMs")
+        tip: tr("This will cancel the rescheduling for the selected VMs"),
+        custom_classes : "state-dependent"
     },
     "VM.recover" : {
         type: "confirm_with_select",
         text: tr("Recover"),
         layout: "vmsplanification_buttons",
-        custom_select: '<select class="resource_list_select"><option value="success">' + tr("success") + '</option>\
-                 <option value="failure">' + tr("failure") + '</option></select>',
+        custom_select: '<select class="resource_list_select">\
+                <option value="2">' + tr("retry") + '</option>\
+                <option value="1">' + tr("success") + '</option>\
+                <option value="0">' + tr("failure") + '</option>\
+                </select>',
         tip: tr("Recovers a stuck VM that is waiting for a driver operation. \
-                The recovery may be done by failing or succeeding the pending operation. \
+                The recovery may be done by failing, succeeding or retrying the current operation. \
                 YOU NEED TO MANUALLY CHECK THE VM STATUS ON THE HOST, to decide if the operation \
-                was successful or not.")
+                was successful or not, or if it can be retried."),
+        custom_classes : "state-dependent"
     },
     "VM.startvnc" : {
         type: "action",
@@ -942,7 +1104,7 @@ var vms_tab = {
     buttons: vm_buttons,
     tabClass: 'subTab',
     parentTab: 'vresources-tab',
-    search_input: '<input id="vms_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="vms_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-th"></i>&emsp;'+tr("Virtual Machines"),
     info_header: '<i class="fa fa-fw fa-th"></i>&emsp;'+tr("VM"),
     subheader: '<span class="total_vms"/> <small>'+tr("TOTAL")+'</small>&emsp;\
@@ -964,7 +1126,8 @@ var vms_tab = {
             <th>'+tr("Host")+'</th>\
             <th>'+tr("IPs")+'</th>\
             <th>'+tr("Start Time")+'</th>\
-            <th>'+tr("")+'</th>\
+            <th></th>\
+            <th>'+tr("Hidden Template")+'</th>\
           </tr>\
         </thead>\
         <tbody id="tbodyvmachines">\
@@ -1029,9 +1192,11 @@ function vMachineElementArray(vm_json){
     }
 
     if (state == tr("ACTIVE")) {
-        state = OpenNebula.Helper.resource_state("vm_lcm",vm.LCM_STATE);
+        state = OpenNebula.Helper.resource_state("short_vm_lcm",vm.LCM_STATE);
     };
 
+    // Build hidden user template
+    var hidden_template = convert_template_to_string(vm);
 
     return [
         '<input class="check_item" type="checkbox" id="vm_'+vm.ID+'" name="selected_items" value="'+vm.ID+'"/>',
@@ -1045,7 +1210,8 @@ function vMachineElementArray(vm_json){
         hostname,
         ip_str(vm),
         str_start_time(vm),
-        vncIcon(vm)
+        vncIcon(vm),
+        hidden_template
     ];
 };
 
@@ -1072,6 +1238,8 @@ function addVMachineElement(request,vm_json){
 
 // Callback to refresh the list of Virtual Machines
 function updateVMachinesView(request, vmachine_list){
+    resetStateButtons();
+
     var vmachine_list_array = [];
 
     active_vms = 0;
@@ -1079,55 +1247,11 @@ function updateVMachinesView(request, vmachine_list){
     failed_vms = 0;
     off_vms = 0;
 
-    var total_real_cpu = 0;
-    var total_allocated_cpu = 0;
-
-    var total_real_mem = 0;
-    var total_allocated_mem = 0;
-
     $.each(vmachine_list,function(){
         vmachine_list_array.push( vMachineElementArray(this));
-
-        if(this.VM.STATE == 3 && this.VM.STATE == 3){ // ACTIVE, RUNNING
-            total_real_cpu += parseInt(this.VM.CPU);
-            total_allocated_cpu += parseInt(this.VM.TEMPLATE.CPU * 100);
-
-            total_real_mem += parseInt(this.VM.MEMORY);
-            total_allocated_mem += parseInt(this.VM.TEMPLATE.MEMORY);
-        }
     });
 
     updateView(vmachine_list_array,dataTable_vMachines);
-
-    var usage = 0;
-    if(total_allocated_cpu != 0){
-        usage = parseInt(100 * total_real_cpu / total_allocated_cpu);
-    }
-    //var info_str = usage+'%';
-    //$("#dash_vm_real_cpu").html(usageBarHtml(usage, 100, info_str, true));
-
-    $("#dashboard_cpu_usage").html(quotaDashboard(
-      "dashboard_cpu_usage",
-      tr("REAL CPU USAGE"),
-      "40px",
-      "14px",
-      {"percentage": usage, "str": (total_real_cpu + " / " + total_allocated_cpu)})
-    );
-
-    usage = 0;
-    if(total_allocated_mem != 0){
-        usage = parseInt(100 * total_real_mem / 1024 / total_allocated_mem);
-    }
-    //info_str = usage+'%';
-    //$("#dash_vm_real_mem").html(usageBarHtml(usage, 100, info_str, true));
-
-    $("#dashboard_memory_usage").html(quotaDashboard(
-      "dashboard_memory_usage",
-      tr("REAL MEMORY USAGE"),
-      "40px",
-      "14px",
-      {"percentage": usage, "str": (humanize_size(Math.floor((total_real_mem))) + " / " + humanize_size(total_allocated_mem * 1024)) })
-    );
 
     $(".total_vms").text(vmachine_list.length);
     $(".active_vms").text(active_vms);
@@ -1279,6 +1403,53 @@ function generatePlacementTable(vm){
 
 };
 
+function disableAllStateActions(){
+    $(".state-dependent").attr("disabled", "disabled").
+        removeClass("vm-action-enabled").
+        addClass("vm-action-disabled").
+        click(function(e){ e.preventDefault(); });
+}
+
+function resetStateButtons(){
+    $(".state-dependent").
+        addClass("vm-action-enabled").
+        removeClass("vm-action-disabled").
+        click(function(e){ return true; });
+}
+
+function enableStateButton(button_action){
+    $(".state-dependent[href='"+button_action+"']").removeAttr("disabled").
+        addClass("vm-action-enabled").
+        removeClass("vm-action-disabled").
+        click(function(e){ return true; });
+}
+
+// state and lcm_state are numeric
+function enableStateActions(state, lcm_state){
+    var state = parseInt(state);
+    var lcm_state = parseInt(lcm_state);
+
+    $.each(state_actions[state], function(i,action){
+        enableStateButton(action);
+    });
+
+    if (state == OpenNebula.VM.state.ACTIVE){
+        $.each(lcm_state_actions[lcm_state], function(i,action){
+            enableStateButton(action);
+        });
+    }
+}
+
+// Returns true if the action is enabled for the given state
+// action is "VM.action", state and lcm_state are numeric
+function enabledStateAction(action, state, lcm_state){
+    var state = parseInt(state);
+    var lcm_state = parseInt(lcm_state);
+
+    return ( state_actions[state].indexOf(action) != -1 ||
+             (  state == OpenNebula.VM.state.ACTIVE &&
+                lcm_state_actions[lcm_state].indexOf(action) != -1 ) );
+}
 
 // Refreshes the information panel for a VM
 function updateVMInfo(request,vm){
@@ -1292,6 +1463,10 @@ function updateVMInfo(request,vm){
             hostname = vm_info.HISTORY_RECORDS.HISTORY.HOSTNAME;
         };
     };
+
+    // Enable only action buttons for the current state
+    disableAllStateActions();
+    enableStateActions(vm_info.STATE, vm_info.LCM_STATE);
 
     // Get rid of the unwanted (for show) SCHED_* keys
     var stripped_vm_template = {};
@@ -1375,7 +1550,7 @@ function updateVMInfo(request,vm){
                  insert_extended_template_table(stripped_vm_template,
                                                 "VM",
                                                 vm_info.ID,
-                                                "Attributes",
+                                                tr("Attributes"),
                                                 unshown_values) +
               '</div>\
             </div>'
@@ -1454,12 +1629,14 @@ function updateVMInfo(request,vm){
 
     $("[href='#vm_capacity_tab']").on("click", function(){
         Sunstone.runAction("VM.monitor",vm_info.ID,
-        { monitor_resources : "CPU,MEMORY"});
+            { monitor_resources : "CPU,MEMORY"});
     })
 
     $("[href='#vm_network_tab']").on("click", function(){
-        Sunstone.runAction("VM.monitor",vm_info.ID,
-        { monitor_resources : "NET_TX,NET_RX"});
+        if (isNICGraphsSupported(vm_info)) {
+            Sunstone.runAction("VM.monitor",vm_info.ID,
+                { monitor_resources : "NET_TX,NET_RX"});
+        }
     })
 
     $("[href='#vm_log_tab']").on("click", function(){
@@ -1502,13 +1679,13 @@ function updateVMInfo(request,vm){
                 "data":           null,
                 "defaultContent": '<span class="fa fa-fw fa-chevron-down"></span>'
             },
-            { "data": "NIC_ID" },
-            { "data": "NETWORK" },
-            { "data": "IP" },
-            { "data": "MAC" },
-            { "data": "IP6_ULA" },
-            { "data": "IP6_GLOBAL" },
-            { "data": "ACTIONS" }
+            { "data": "NIC_ID",     "defaultContent": "" },
+            { "data": "NETWORK",    "defaultContent": "" },
+            { "data": "IP",         "defaultContent": "" },
+            { "data": "MAC",        "defaultContent": "" },
+            { "data": "IP6_ULA",    "defaultContent": "" },
+            { "data": "IP6_GLOBAL", "defaultContent": "" },
+            { "data": "ACTIONS",    "defaultContent": "" }
         ],
 
         "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
@@ -1518,6 +1695,8 @@ function updateVMInfo(request,vm){
 
                 $("td.open-control", nRow).html("").removeClass('open-control');
             }
+
+            $(nRow).attr("nic_id", aData.NIC_ID);
         }
     });
 
@@ -1574,7 +1753,6 @@ function printActionsTable(vm_info)
                                 <option value="stop">' + tr("stop") + '</option>\
                                 <option value="suspend">' + tr("suspend") + '</option>\
                                 <option value="resume">' + tr("resume") + '</option>\
-                                <option value="boot">' + tr("boot") + '</option>\
                                 <option value="delete">' + tr("delete") + '</option>\
                                 <option value="delete-recreate">' + tr("delete-recreate") + '</option>\
                                 <option value="reboot">' + tr("reboot") + '</option>\
@@ -1784,8 +1962,7 @@ function printDisks(vm_info){
                 <th>';
 
     if (Config.isTabActionEnabled("vms-tab", "VM.attachdisk")) {
-      // If VM is not RUNNING, then we forget about the attach disk form.
-      if (vm_info.STATE == "3" && vm_info.LCM_STATE == "3"){
+      if (enabledStateAction("VM.attachdisk", vm_info.STATE, vm_info.LCM_STATE)){
         html += '\
            <button id="attach_disk" class="button tiny success right radius" >'+tr("Attach disk")+'</button>'
       } else {
@@ -1805,6 +1982,15 @@ function printDisks(vm_info){
         disks = vm_info.TEMPLATE.DISK
     else if (!$.isEmptyObject(vm_info.TEMPLATE.DISK))
         disks = [vm_info.TEMPLATE.DISK]
+
+    if (!$.isEmptyObject(vm_info.TEMPLATE.CONTEXT)){
+        var context_disk = vm_info.TEMPLATE.CONTEXT;
+
+        context_disk["IMAGE"] = tr("Context");
+        context_disk["CONTEXT"] = true;
+
+        disks.push(context_disk);
+    }
 
     if (!disks.length){
         html += '\
@@ -1859,17 +2045,25 @@ function printDisks(vm_info){
 
               actions = '';
 
-              if (Config.isTabActionEnabled("vms-tab", "VM.saveas")) {
-                // Check if its volatie
-                if (disk.IMAGE_ID) {
-                  if ((vm_info.STATE == "3" && vm_info.LCM_STATE == "3") || vm_info.STATE == "5" || vm_info.STATE == "8") {
+              if (disk.SAVE == "YES") {
+                if (Config.isTabActionEnabled("vms-tab", "VM.disk_snapshot_cancel")) {
+                  if ( enabledStateAction("VM.disk_snapshot_cancel", vm_info.STATE, vm_info.LCM_STATE)) {
+                    actions += '<a href="VM.disk_snapshot_cancel" class="disk_snapshot_cancel" >\
+                      <i class="fa fa-times"/></span>'+tr("Cancel Snapshot")+'</a> &emsp;'
+                  }
+                }
+              } else {
+                if (Config.isTabActionEnabled("vms-tab", "VM.saveas")) {
+                  // Check if it's volatile
+                  if ( disk.IMAGE_ID &&
+                       enabledStateAction("VM.saveas", vm_info.STATE, vm_info.LCM_STATE)) {
                     actions += '<a href="VM.saveas" class="saveas" ><i class="fa fa-save"/>'+tr("Snapshot")+'</a> &emsp;'
                   }
                 }
               }
 
               if (Config.isTabActionEnabled("vms-tab", "VM.detachdisk")) {
-                if (vm_info.STATE == "3" && vm_info.LCM_STATE == "3") {
+                if (enabledStateAction("VM.detachdisk", vm_info.STATE, vm_info.LCM_STATE) && !disk.CONTEXT) {
                   actions += '<a href="VM.detachdisk" class="detachdisk" ><i class="fa fa-times"/>'+tr("Detach")+'</a>'
                 }
               }
@@ -2020,22 +2214,7 @@ function setupAttachDiskDialog(){
         var vm_id = $('#vm_id', this).text();
 
         var data  = {};
-
-        if($('input[type=radio]:checked', dialog).val()=="image")
-        {
-          // Clear the volatile fields
-          $('input#FORMAT',   dialog).val("");
-          $('input#SIZE_TMP', dialog).val("");
-        }
-        else
-        {
-          $('input#IMAGE_ID',   dialog).val("");
-          $('input#IMAGE',      dialog).val("");
-          $('input#IMAGE_UID',  dialog).val("");
-          $('input#IMAGE_UNAME',dialog).val("");
-        }
-
-        addSectionJSON(data, this);
+        addSectionJSON(data, $('#disk_type.vm_param ', this));
 
         var obj = {DISK: data}
         Sunstone.runAction('VM.attachdisk', vm_id, obj);
@@ -2065,6 +2244,18 @@ function hotpluggingOps(){
           popUpSaveAsDialog(vm_id, disk_id);
 
           //b.html(spinner);
+          return false;
+      });
+    }
+
+    if (Config.isTabActionEnabled("vms-tab", "VM.disk_snapshot_cancel")) {
+      $('a.disk_snapshot_cancel').live('click', function(){
+          var b = $(this);
+          var vm_id = b.parents('form').attr('vmid');
+          var disk_id = b.parents('tr').attr('disk_id');
+
+          Sunstone.runAction('VM.disk_snapshot_cancel', vm_id, disk_id);
+
           return false;
       });
     }
@@ -2099,8 +2290,6 @@ function hotpluggingOps(){
 
 function printNics(vm_info){
 
-   var isHybrid = calculate_isHybrid(vm_info);
-
    var html ='<form id="tab_network_form" vmid="'+vm_info.ID+'" >\
       <div class="row">\
       <div class="large-12 columns">\
@@ -2118,8 +2307,7 @@ function printNics(vm_info){
                 <th>';
 
     if (Config.isTabActionEnabled("vms-tab", "VM.attachnic")) {
-      // If VM is not RUNNING, then we forget about the attach nic form.
-      if (vm_info.STATE == "3" && vm_info.LCM_STATE == "3" && !isHybrid){
+      if (enabledStateAction("VM.attachnic", vm_info.STATE, vm_info.LCM_STATE) && isNICAttachSupported(vm_info)){
         html += '\
            <button id="attach_nic" class="button tiny success right radius" >'+tr("Attach nic")+'</button>'
       } else {
@@ -2137,52 +2325,40 @@ function printNics(vm_info){
         </div>\
       </div>';
 
+    var externalNetworkAttrs = retrieveExternalNetworkAttrs(vm_info);
+    if (!$.isEmptyObject(externalNetworkAttrs)) {
+        html += '<div class="row">'+
+          '<div class="large-12 columns">' +
+           '<table class="dataTable extended_table">' +
+              '<thead>'+
+                '<tr>'+
+                   '<th colspan=2>'+ tr("Network Monitoring Attributes") + '</th>'+
+                '</tr>'+
+              '</thead>'+
+              '<tbody>';
+
+        $.each(externalNetworkAttrs, function(key, value){
+            html += '<tr>'+
+               '<td>'+ key + '</td>'+
+               '<td>'+ value + '</td>'+
+              '</tr>';
+        });
+
+        html += '</tbody>' +
+              '</table>'+
+            '</div>'+
+          '</div>';
+    }
+
     var nics = []
 
-    if (isHybrid)
-    {
-        nic         = {};
-        nic.NIC_ID  = 0;
-        nic.ATTACH  = "NO";
-        nic.NETWORK = "-";
-        nic.MAC     = "-";
-
-        switch(vm_info.USER_TEMPLATE.HYPERVISOR.toLowerCase())
-        {
-            case "vcenter":
-                nic.IP = vm_info.TEMPLATE.GUEST_IP?vm_info.TEMPLATE.GUEST_IP:"--";
-                break;
-            case "ec2":
-                nic.IP = vm_info.TEMPLATE.IP_ADDRESS?vm_info.TEMPLATE.IP_ADDRESS:"--";
-                break;
-            case "azure":
-                nic.IP = vm_info.TEMPLATE.IPADDRESS?vm_info.TEMPLATE.IPADDRESS:"--";
-                break;
-            case "softlayer":
-                nic.IP = vm_info.TEMPLATE.PRIMARYIPADDRESS?vm_info.TEMPLATE.PRIMARYIPADDRESS:"--";
-                break;
-            default:
-                nic.IP = "--";
-        }
-
-        nics = [nic];
-
-    }
-    else
-    {
-        if ($.isArray(vm_info.TEMPLATE.NIC))
-            nics = vm_info.TEMPLATE.NIC
-        else if (!$.isEmptyObject(vm_info.TEMPLATE.NIC))
-            nics = [vm_info.TEMPLATE.NIC]
-    }
-
-
+    if ($.isArray(vm_info.TEMPLATE.NIC))
+        nics = vm_info.TEMPLATE.NIC
+    else if (!$.isEmptyObject(vm_info.TEMPLATE.NIC))
+        nics = [vm_info.TEMPLATE.NIC]
 
     if (!nics.length){
-        html += '\
-          <tr id="no_nics_tr">\
-            <td colspan="7">' + tr("No nics to show") + '</td>\
-          </tr>';
+        $("#vms-tab").data("nic_dt_data", []);
     }
     else {
         var nic_dt_data = [];
@@ -2206,7 +2382,7 @@ function printNics(vm_info){
               actions = '';
 
               if (Config.isTabActionEnabled("vms-tab", "VM.detachnic")) {
-                if (vm_info.STATE == "3" && vm_info.LCM_STATE == "3") {
+                if (enabledStateAction("VM.detachnic", vm_info.STATE, vm_info.LCM_STATE)){
                   actions += '<a href="VM.detachnic" class="detachnic" ><i class="fa fa-times"/>'+tr("Detach")+'</a>'
                 }
               }
@@ -2244,8 +2420,8 @@ function printNics(vm_info){
         $("#vms-tab").data("nic_dt_data", nic_dt_data);
     }
 
-  if (!isHybrid)
-  {
+  // Do not show statistics for not hypervisors that do not gather net data
+  if (isNICGraphsSupported(vm_info)) {
     html += '\
         <div class="row">\
             <div class="large-6 columns">\
@@ -2558,6 +2734,18 @@ function setupResizeCapacityDialog(){
 
         var data  = {};
         addSectionJSON(data, this);
+
+        if (data["CPU"] == $('#cpu_info').text()) {
+            delete data["CPU"];
+        };
+
+        if (data["MEMORY"] == $('#memory_info').attr("one_value")) {
+            delete data["MEMORY"];
+        };
+
+        if (data["VCPU"] == $('#vcpu_info').text()) {
+            delete data["VCPU"];
+        };
 
         var obj = {
           "vm_template": data,
@@ -3020,7 +3208,13 @@ function setupMigrateVMDialog(live){
 
     setupHostTableSelect(dialog, "migrate_vm");
 
+    // Show system DS only
+    setupDatastoreTableSelect(dialog, "migrate_vm_ds",
+        { filter_fn: function(ds){ return ds.TYPE == 1; } }
+    );
+
     $('#refresh_button_migrate_vm', dialog).click();
+    $('#refresh_button_migrate_vm_ds', dialog).click();
 
     $('#advanced_migrate', dialog).hide();
     $('#advanced_migrate_toggle',dialog).click(function(){
@@ -3029,6 +3223,10 @@ function setupMigrateVMDialog(live){
     });
 
     setupTips(dialog);
+
+    if (live){
+        $(".migrate_vm_ds_selection", dialog).hide();
+    }
 
     $('#migrate_vm_form',dialog).submit(function(){
         var extra_info = {};
@@ -3040,6 +3238,7 @@ function setupMigrateVMDialog(live){
             return false;
         }
 
+        extra_info['ds_id'] = $("#selected_resource_id_migrate_vm_ds", dialog).val() || -1
         extra_info['enforce'] = $("#enforce", this).is(":checked") ? true : false
 
         $.each(getSelectedNodes(dataTable_vMachines), function(index, elem) {
@@ -3388,7 +3587,7 @@ $(document).ready(function(){
       });
 
       $('#vms_search').keyup(function(){
-        dataTable_vMachines.fnFilter( $(this).val() );
+        dataTable_vMachines.fnFilter( $(this).val(), null, true, false );
       })
 
       dataTable_vMachines.on('draw', function(){

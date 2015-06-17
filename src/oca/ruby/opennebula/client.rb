@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -130,7 +130,7 @@ module OpenNebula
                 raise "ONE_AUTH file not present"
             end
 
-            @one_auth.rstrip!
+            @one_auth = @one_auth.rstrip
 
             if endpoint
                 @one_endpoint = endpoint
@@ -143,6 +143,8 @@ module OpenNebula
             else
                 @one_endpoint = "http://localhost:2633/RPC2"
             end
+
+            @one_endpoint= @one_endpoint.rstrip
 
             @async = !options[:sync]
 

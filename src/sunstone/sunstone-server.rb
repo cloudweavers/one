@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -178,7 +178,7 @@ helpers do
             logger.info { "Unauthorized login attempt" }
             return [401, ""]
         else
-            client  = $cloud_auth.client(result)
+            client  = $cloud_auth.client(result, session[:active_zone_endpoint])
             user_id = OpenNebula::User::SELF
 
             user    = OpenNebula::User.new_with_id(user_id, client)
@@ -218,14 +218,10 @@ helpers do
                 session[:lang] = $conf[:lang]
             end
 
-            if user['TEMPLATE/VNC_WSS']
-                session[:vnc_wss] = user['TEMPLATE/VNC_WSS']
-            else
-                wss = $conf[:vnc_proxy_support_wss]
-                #limit to yes,no options
-                session[:vnc_wss] = (wss == true || wss == "yes" || wss == "only" ?
-                                 "yes" : "no")
-            end
+            wss = $conf[:vnc_proxy_support_wss]
+            #limit to yes,no options
+            session[:vnc_wss] = (wss == true || wss == "yes" || wss == "only" ?
+                             "yes" : "no")
 
             if user['TEMPLATE/TABLE_ORDER']
                 session[:table_order] = user['TEMPLATE/TABLE_ORDER']
@@ -235,6 +231,8 @@ helpers do
 
             if user['TEMPLATE/DEFAULT_VIEW']
                 session[:default_view] = user['TEMPLATE/DEFAULT_VIEW']
+            elsif group.contains_admin(user.id) && group['TEMPLATE/GROUP_ADMIN_DEFAULT_VIEW']
+                session[:default_view] = group['TEMPLATE/GROUP_ADMIN_DEFAULT_VIEW']
             elsif group['TEMPLATE/DEFAULT_VIEW']
                 session[:default_view] = group['TEMPLATE/DEFAULT_VIEW']
             else
@@ -247,7 +245,7 @@ helpers do
                 env['rack.session.options'][:expire_after] = 30*60*60*24-1
             end
 
-            serveradmin_client = $cloud_auth.client()
+            serveradmin_client = $cloud_auth.client(nil, session[:active_zone_endpoint])
             rc = OpenNebula::System.new(serveradmin_client).get_configuration
             return [500, rc.message] if OpenNebula.is_error?(rc)
             return [500, "Couldn't find out zone identifier"] if !rc['FEDERATION/ZONE_ID']
@@ -255,6 +253,8 @@ helpers do
             zone = OpenNebula::Zone.new_with_id(rc['FEDERATION/ZONE_ID'].to_i, client)
             zone.info
             session[:zone_name] = zone.name
+
+            session[:federation_mode] = rc['FEDERATION/MODE'].upcase
 
             return [204, ""]
         end
@@ -282,23 +282,45 @@ before do
     end
 
     if env['HTTP_ZONE_NAME']
-        client=$cloud_auth.client(session[:user])
+        client = $cloud_auth.client(session[:user], session[:active_zone_endpoint])
         zpool = ZonePoolJSON.new(client)
 
         rc = zpool.info
 
-        return [500, rc.to_json] if OpenNebula.is_error?(rc)
+        halt [500, rc.to_json] if OpenNebula.is_error?(rc)
 
+        found = false
         zpool.each{|z|
             if z.name == env['HTTP_ZONE_NAME']
-              session[:active_zone_endpoint] = z['TEMPLATE/ENDPOINT']
-              session[:zone_name] = env['HTTP_ZONE_NAME']
+                found = true
+                serveradmin_client = $cloud_auth.client(nil, z['TEMPLATE/ENDPOINT'])
+                rc = OpenNebula::System.new(serveradmin_client).get_configuration
+
+                if OpenNebula.is_error?(rc)
+                    msg = "Zone #{env['HTTP_ZONE_NAME']} not available " + rc.message
+                    logger.error { msg }
+                    halt [410, OpenNebula::Error.new(msg).to_json]
+                end
+
+                if !rc['FEDERATION/ZONE_ID']
+                    msg = "Couldn't find out zone identifier"
+                    logger.error { msg }
+                    halt [500, OpenNebula::Error.new(msg).to_json]
+                end
+
+                session[:active_zone_endpoint] = z['TEMPLATE/ENDPOINT']
+                session[:zone_name] = env['HTTP_ZONE_NAME']
             end
          }
+
+         if !found
+            msg = "Zone #{env['HTTP_ZONE_NAME']} does not exist"
+            logger.error { msg }
+            halt [404, OpenNebula::Error.new(msg).to_json]
+        end
     end
 
-    client = $cloud_auth.client(session[:user],
-                              session[:active_zone_endpoint])
+    client = $cloud_auth.client(session[:user], session[:active_zone_endpoint])
 
     @SunstoneServer = SunstoneServer.new(client,$conf,logger)
 end
@@ -400,7 +422,7 @@ post '/config' do
 
     user = OpenNebula::User.new_with_id(
                 OpenNebula::User::SELF,
-                $cloud_auth.client(session[:user]))
+                $cloud_auth.client(session[:user], session[:active_zone_endpoint]))
 
     rc = user.info
     if OpenNebula.is_error?(rc)
@@ -480,9 +502,11 @@ end
 get '/:pool' do
     zone_client = nil
 
-    if params[:zone_id]
+    if params[:zone_id] && session[:federation_mode] != "STANDALONE"
         zone = OpenNebula::Zone.new_with_id(params[:zone_id].to_i,
-                                            $cloud_auth.client(session[:user]))
+                                            $cloud_auth.client(session[:user], 
+                                                session[:active_zone_endpoint]))
+
         rc   = zone.info
         return [500, rc.message] if OpenNebula.is_error?(rc)
         zone_client = $cloud_auth.client(session[:user],

@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2014, C12G Labs S.L.                                        #
+# Copyright 2010-2015, C12G Labs S.L.                                        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -55,7 +55,9 @@ helpers do
 		  # config.adapter = :patron
 
 		  # Merged with the default client options hash
-		  # config.client_options = { :ssl => false }
+		  if ENV['http_proxy']
+		  	config.client_options = { :proxy => ENV['http_proxy'] }
+		  end
 
 		  # When getting the error 'hostname does not match the server certificate'
 		  # use the API at https://yoursubdomain.zendesk.com/api/v2

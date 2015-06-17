@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,20 @@ public class OneResponse{
             ret = Integer.parseInt( getMessage() );
         }
         catch (NumberFormatException e) {}
+
+        return ret;
+    }
+
+    /**
+     * Parses the string returned by getMessage
+     *
+     * @return The parsed boolean. False in case of error
+     *
+     * @see #getMessage
+     */
+    public boolean getBooleanMessage()
+    {
+        boolean ret = Boolean.parseBoolean( getMessage() );
 
         return ret;
     }

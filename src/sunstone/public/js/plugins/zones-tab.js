@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -220,7 +220,7 @@ var zones_tab = {
     buttons: zone_buttons,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="zone_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="zone_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-files-o"></i>&emsp;'+tr("Zones"),
     info_header: '<i class="fa fa-fw fa-files-o"></i>&emsp;'+tr("Zone"),
     subheader: '<span/> <small></small>&emsp;',
@@ -338,7 +338,7 @@ function updateZoneInfo(request,zone){
                   + insert_extended_template_table(zone_template,
                                            "Zone",
                                            zone_info.ID,
-                                           "Attributes") +
+                                           tr("Attributes")) +
          '</div>\
         </div>'
     }

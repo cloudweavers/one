@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -49,7 +49,7 @@ module Migrator
 
         @db.transaction do
             @db.fetch("SELECT * FROM old_vm_pool") do |row|
-                doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+                doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
                 doc.root.xpath("HISTORY_RECORDS/HISTORY").each do |e|
                     update_history(e)
@@ -79,7 +79,7 @@ module Migrator
 
         @db.transaction do
             @db.fetch("SELECT * FROM old_history") do |row|
-                doc = Nokogiri::XML(row[:body]){|c| c.default_xml.noblanks}
+                doc = Nokogiri::XML(row[:body],nil,NOKOGIRI_ENCODING){|c| c.default_xml.noblanks}
 
                 doc.root.xpath("/HISTORY").each do |e|
                     update_history(e)

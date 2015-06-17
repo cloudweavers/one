@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------------ */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs      */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs      */
 /*                                                                          */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may  */
 /* not use this file except in compliance with the License. You may obtain  */
@@ -51,6 +51,10 @@ Host::Host(
 
     add_template_attribute("RESERVED_CPU", default_cpu);
     add_template_attribute("RESERVED_MEM", default_cpu);
+
+    replace_template_attribute("IM_MAD", im_mad_name);
+    replace_template_attribute("VM_MAD", vmm_mad_name);
+    replace_template_attribute("VN_MAD", vnm_mad_name);
 }
 
 Host::~Host()
@@ -345,6 +349,14 @@ int Host::update_info(Template        &tmpl,
 
         rc = vatt->vector_value("ID", vmid);
 
+        if (rc == 0 && vmid == -1) //Check if it is an imported
+        {
+            Nebula&  nd = Nebula::instance();
+            VirtualMachinePool * vmpool = nd.get_vmpool();
+
+            vmid = vmpool->get_vmid(vatt->vector_value("DEPLOY_ID"));
+        }
+
         if (rc == 0 && vmid != -1)
         {
             if (tmp_lost_vms.erase(vmid) == 1) //Good, known
@@ -358,26 +370,46 @@ int Host::update_info(Template        &tmpl,
                 // Reported as zombie at least 2 times?
                 if (prev_tmp_zombie.count(vmid) == 1)
                 {
+                    string zname;
+
                     if (num_zombies++ > 0)
                     {
                         zombie << ", ";
                     }
 
-                    zombie << vatt->vector_value("DEPLOY_ID");
+                    zname = vatt->vector_value("VM_NAME");
+
+                    if (zname.empty())
+                    {
+                        zname = vatt->vector_value("DEPLOY_ID");
+                    }
+
+                    zombie << zname;
                 }
             }
+
+            delete *it;
         }
         else if (rc == 0) //not ours
         {
+            string wname;
+
             if (num_wilds++ > 0)
             {
                 wild << ", ";
             }
 
-            wild << vatt->vector_value("DEPLOY_ID");
-        }
+            wname = vatt->vector_value("VM_NAME");
 
-        delete *it;
+            if (wname.empty())
+            {
+                wname = vatt->vector_value("DEPLOY_ID");
+            }
+
+            wild << wname;
+
+            obj_template->set(*it);
+        }
     }
 
     for(set_it = tmp_lost_vms.begin(); set_it != tmp_lost_vms.end(); set_it++)
@@ -667,8 +699,10 @@ int Host::from_xml(const string& xml)
 
 int Host::post_update_template(string& error)
 {
-
     string vcenter_password;
+    string new_im_mad;
+    string new_vm_mad;
+    string new_vn_mad;
 
     erase_template_attribute("VCENTER_PASSWORD", vcenter_password);
 
@@ -693,6 +727,26 @@ int Host::post_update_template(string& error)
             add_template_attribute("VCENTER_PASSWORD", vcenter_password);
         }
     }
+
+    get_template_attribute("IM_MAD", new_im_mad);
+    get_template_attribute("VM_MAD", new_vm_mad);
+    get_template_attribute("VN_MAD", new_vn_mad);
+
+    if (new_im_mad != ""){
+        im_mad_name = new_im_mad;
+    }
+
+    if (new_im_mad != ""){
+        vmm_mad_name = new_vm_mad;
+    }
+
+    if (new_im_mad != ""){
+        vnm_mad_name = new_vn_mad;
+    }
+
+    replace_template_attribute("IM_MAD", im_mad_name);
+    replace_template_attribute("VM_MAD", vmm_mad_name);
+    replace_template_attribute("VN_MAD", vnm_mad_name);
 
     return 0;
 };

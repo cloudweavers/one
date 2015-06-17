@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+ * Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,5 +144,20 @@ public class DocumentTest
 
         assertTrue( !foundA );
         assertTrue( foundB );
+    }
+
+    @Test
+    public void lock()
+    {
+        res = objA.lock("doctest");
+        assertTrue( res.getErrorMessage(), !res.isError() );
+        assertTrue( res.getMessage(), res.getBooleanMessage() == true );
+
+        res = objA.lock("doctest");
+        assertTrue( res.getErrorMessage(), !res.isError() );
+        assertTrue( res.getMessage(), res.getBooleanMessage() == false );
+
+        res = objA.unlock("doctest");
+        assertTrue( res.getErrorMessage(), !res.isError() );
     }
 }

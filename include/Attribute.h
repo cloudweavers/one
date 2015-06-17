@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -245,6 +245,15 @@ public:
      *    @return the value of the attribute if found, empty otherwise
      */
     string vector_value(const char *name) const;
+
+    /**
+     *  Returns the string value
+     *    @param name of the attribute
+     *    @param value of the value
+     *
+     *    @return 0 if the attribute was found, -1 otherwise
+     */
+    int vector_value(const char *name, string& value) const;
 
     /**
      *  Returns the boolean value

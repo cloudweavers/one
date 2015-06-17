@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -46,7 +46,7 @@ const std::string& LoginToken::set(const std::string& user_token, time_t valid)
         expiration_time = 0;
     }
 
-    if (user_token.empty())
+    if (!user_token.empty())
     {
         token = user_token;
     }

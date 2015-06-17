@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -39,10 +39,8 @@ module OpenNebulaJSON
                  when "chown"       then self.chown(action_hash['params'])
                  when "update"       then self.update_json(action_hash['params'])
                  when "set_quota"   then self.set_quota(action_hash['params'])
-                 when "add_provider" then 
-                                   self.add_provider_json(action_hash['params'])
-                 when "del_provider" then 
-                                   self.del_provider_json(action_hash['params'])
+                 when "add_admin"   then self.add_admin_json(action_hash['params'])
+                 when "del_admin"   then self.del_admin_json(action_hash['params'])
                  else
                      error_msg = "#{action_hash['perform']} action not " <<
                          " available for this resource"
@@ -64,12 +62,12 @@ module OpenNebulaJSON
             super(quota_template)
         end
 
-        def add_provider_json(params=Hash.new)
-            add_provider(params['zone_id'].to_i, params['cluster_id'].to_i)
+        def add_admin_json(params=Hash.new)
+            add_admin(params['admin_id'].to_i)
         end
 
-        def del_provider_json(params=Hash.new)
-            del_provider(params['zone_id'].to_i, params['cluster_id'].to_i)
+        def del_admin_json(params=Hash.new)
+            del_admin(params['admin_id'].to_i)
         end
     end
 end

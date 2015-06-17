@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -53,7 +53,6 @@ module OpenNebulaJSON
                  when "release"      then self.release
                  when "stop"         then self.stop
                  when "suspend"      then self.suspend
-                 when "restart"      then self.restart
                  when "reset"        then self.reset
                  when "saveas"       then self.save_as(action_hash['params'])
                  when "snapshot_create"       then self.snapshot_create(action_hash['params'])
@@ -76,6 +75,7 @@ module OpenNebulaJSON
                  when "resched"      then self.resched
                  when "unresched"    then self.unresched
                  when "recover"      then self.recover(action_hash['params'])
+                 when "save_as_template" then self.save_as_template(action_hash['params'])
                  else
                      error_msg = "#{action_hash['perform']} action not " <<
                          " available for this resource"
@@ -100,14 +100,11 @@ module OpenNebulaJSON
         end
 
         def migrate(params=Hash.new, live=false)
-            super(params['host_id'], live, params['enforce'])
+            super(params['host_id'], live, params['enforce'], params['ds_id'])
         end
 
         def save_as(params=Hash.new)
-            clone = params['clonetemplate']
-            clone = false if clone.nil?
-
-            disk_snapshot(params['disk_id'].to_i, params['image_name'], params['type'], params['hot'], clone)
+            disk_saveas(params['disk_id'].to_i, params['image_name'], params['type'])
         end
 
         def snapshot_create(params=Hash.new)
@@ -165,8 +162,11 @@ module OpenNebulaJSON
         end
 
         def recover(params=Hash.new)
-            result = params['with'] == "success" ? true : false
-            super(result)
+            super(params['result'].to_i)
+        end
+
+        def save_as_template(params=Hash.new)
+            super(params['name'])
         end
     end
 end

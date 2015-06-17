@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,14 +16,16 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
-ONE_LOCATION=ENV["ONE_LOCATION"]
+if !defined? ONE_LOCATION
+    ONE_LOCATION=ENV["ONE_LOCATION"]
 
-if !ONE_LOCATION
-    RUBY_LIB_LOCATION="/usr/lib/one/ruby"
-    ETC_LOCATION="/etc/one/"
-else
-    RUBY_LIB_LOCATION=ONE_LOCATION+"/lib/ruby"
-    ETC_LOCATION=ONE_LOCATION+"/etc/"
+    if !ONE_LOCATION
+        RUBY_LIB_LOCATION="/usr/lib/one/ruby"
+        ETC_LOCATION="/etc/one/"
+    else
+        RUBY_LIB_LOCATION=ONE_LOCATION+"/lib/ruby"
+        ETC_LOCATION=ONE_LOCATION+"/etc/"
+    end
 end
 
 $: << RUBY_LIB_LOCATION

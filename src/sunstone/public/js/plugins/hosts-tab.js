@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -60,6 +60,7 @@ var create_host_tmpl =
                <option value="dummy">' + tr("Default (dummy)") +'</option>\
                <option value="fw">'+tr("Firewall")+'</option>\
                <option value="802.1Q">'+tr("802.1Q")+'</option>\
+               <option value="vxlan">'+tr("VXLAN")+'</option>\
                <option value="ebtables">'+tr("ebtables")+'</option>\
                <option value="ovswitch">'+tr("Open vSwitch")+'</option>\
                <option value="vmware">'+tr("VMware")+'</option>\
@@ -149,10 +150,20 @@ var create_host_tmpl =
       </div>\
       <div class="vcenter_clusters">\
       </div>\
+      <br>\
+      <div class="vcenter_templates">\
+      </div>\
+      <br>\
+      <br>\
+      <div class="vcenter_vms">\
+      </div>\
+      <br>\
+      <div class="vcenter_networks">\
+      </div>\
       <div class="row import_vcenter_clusters_div hidden">\
         <div class="large-12 columns">\
           <br>\
-          <a class="button radius small right success" id="import_vcenter_clusters">'+tr("Import vCenter Clusters and Templates")+'</a>\
+          <a class="button radius small right success" id="import_vcenter_clusters">'+tr("Import")+'</a>\
         </div>\
       </div>\
     </fieldset>\
@@ -429,7 +440,7 @@ var hosts_tab = {
     buttons: host_buttons,
     tabClass: "subTab",
     parentTab: "infra-tab",
-    search_input: '<input id="hosts_search" type="text" placeholder="'+tr("Search")+'" />',
+    search_input: '<input id="hosts_search" type="search" placeholder="'+tr("Search")+'" />',
     list_header: '<i class="fa fa-fw fa-hdd-o "></i>&emsp;'+tr("Hosts"),
     info_header: '<i class="fa fa-fw fa-hdd-o "></i>&emsp;'+tr("Host"),
     subheader: '<span class="total_hosts"/> <small>'+tr("TOTAL")+'</small>&emsp;\
@@ -654,7 +665,7 @@ function updateHostsView (request,host_list){
       "dashboard_host_allocated_cpu",
       tr("ALLOCATED CPU"),
       "30px",
-      "12px",
+      "14px",
       {"percentage": ratio_allocated_cpu, "str": info_str })
     );
 
@@ -672,7 +683,7 @@ function updateHostsView (request,host_list){
       "dashboard_host_real_cpu",
       tr("REAL CPU"),
       "30px",
-      "12px",
+      "14px",
       {"percentage": ratio_real_cpu, "str": info_str })
     );
 
@@ -690,7 +701,7 @@ function updateHostsView (request,host_list){
       "dashboard_host_allocated_mem",
       tr("ALLOCATED MEMORY"),
       "30px",
-      "12px",
+      "14px",
       {"percentage": ratio_allocated_mem, "str": info_str })
     );
 
@@ -708,7 +719,7 @@ function updateHostsView (request,host_list){
       "dashboard_host_real_mem",
       tr("REAL MEMORY"),
       "30px",
-      "12px",
+      "14px",
       {"percentage": ratio_real_mem, "str": info_str })
     );
 
@@ -767,14 +778,29 @@ function updateHostInfo(request,host){
     var stripped_host_template = {};
     var unshown_values         = {};
 
-    if (host_info.TEMPLATE.HYPERVISOR && host_info.TEMPLATE.HYPERVISOR.toLowerCase() != "vcenter")
+    var hypervisor_name = host_info.TEMPLATE.HYPERVISOR ? host_info.TEMPLATE.HYPERVISOR.toLowerCase() : "-" ;
+
+    can_import_wilds = false;
+
+    if (host_info.TEMPLATE.VM)
+    {
+      $.each(host_info.TEMPLATE.VM, function(){
+              if (this.IMPORT_TEMPLATE)
+              {
+                 can_import_wilds = true;
+              }
+      });
+    }
+
+
+    if (!can_import_wilds)
     {
       stripped_host_template = host_info.TEMPLATE;
     }
     else
     {
       for (key in host_info.TEMPLATE)
-          if(!key.match(/HOST/))
+          if(!key.match(/^HOST$/) && !key.match(/^VM$/) && !key.match(/^WILDS$/))
               stripped_host_template[key]=host_info.TEMPLATE[key];
           else
               unshown_values[key]=host_info.TEMPLATE[key];
@@ -845,10 +871,6 @@ function updateHostInfo(request,host){
               <td class="key_td">' + tr("Real CPU") + '</td>\
               <td class="value_td" colspan="2" style="width:50%;">'+cpu_bars.real+'</td>\
             </tr>\
-            <tr>\
-              <td class="key_td">' + tr("Running VMs") + '</td>\
-              <td class="value_td" colspan="2">'+host_info.HOST_SHARE.RUNNING_VMS+'</td>\
-            </tr>\
             </tbody>\
          </table>' +
           insert_datastores_capacity_table(host_info.HOST_SHARE) +
@@ -859,7 +881,7 @@ function updateHostInfo(request,host){
           + insert_extended_template_table(stripped_host_template,
                                            "Host",
                                            host_info.ID,
-                                           "Attributes",
+                                           tr("Attributes"),
                                            unshown_values) +
           '</div>\
         </div>\
@@ -951,18 +973,101 @@ function updateHostInfo(request,host){
           </div>'
     }
 
+    var wilds_info_tab = {
+        title: tr("WILDS"),
+        icon: "fa-hdd-o",
+        content : '<div id="datatable_host_wilds_info_div" class="row">\
+          <div class="large-12 columns">\
+            <button id="import_wilds" class="button tiny success right radius" >'+tr("Import Wilds")+'</button>\
+            <table id="datatable_host_wilds" class="datatable twelve">\
+              <thead>\
+                <tr>\
+                  <th></th>\
+                  <th>' + tr("VM name") + '</th>\
+                  <th>' + tr("Remote ID") + '</th>\
+                </tr>\
+              </thead>\
+              <tbody id="tbody_host_wilds">\
+              </tbody>\
+            </table>\
+          </div>\
+          </div>'
+    }
+
+    // Add event listener for importing WILDS
+    $('#import_wilds').die( "click" );
+    $('#import_wilds').live('click', function () {
+           $.each($("#import_wild_checker:checked", "#datatable_host_wilds"), function(){
+              var vm_json = {
+                "vm": {
+                  "vm_raw": $(this).data("wild_template")
+                }
+              };
+
+              var import_host_id = $(this).data("host_id");
+              var wild_row       = $(this).closest('tr');
+
+              // Create the VM in OpenNebula
+              OpenNebula.VM.create({
+                  timeout: true,
+                  data: vm_json,
+                  success: function(request, response) {
+                    OpenNebula.Helper.clear_cache("VM");
+
+                    var extra_info = {};
+
+                    extra_info['host_id'] = import_host_id;
+                    extra_info['ds_id']   = -1;
+                    extra_info['enforce'] = false;
+
+                    // Deploy the VM
+                    Sunstone.runAction("VM.silent_deploy_action", 
+                                       response.VM.ID, 
+                                       extra_info);
+
+                    // Notify
+                    notifyCustom(tr("VM imported"), " ID: " + response.VM.ID, false);
+
+                    // Delete row (shouldn't be there in next monitorization)
+                    dataTable_wilds_hosts = $("#datatable_host_wilds").dataTable();
+                    dataTable_wilds_hosts.fnDeleteRow(wild_row);
+
+                  },
+                  error: function (request, error_json){
+                      notifyError(error_json.error.message || tr("Cannot contact server: is it running and reachable?"));
+                  }
+              });
+           })
+    });
+
     //Sunstone.updateInfoPanelTab(info_panel_name,tab_name, new tab object);
     Sunstone.updateInfoPanelTab("host_info_panel","host_info_tab",info_tab);
     Sunstone.updateInfoPanelTab("host_info_panel","host_monitoring_tab",monitor_tab);
     Sunstone.updateInfoPanelTab("host_info_panel","host_vms_tab",vms_info_tab);
 
-    if (host_info.TEMPLATE.HYPERVISOR == "vcenter") {
+    hypervisor_name = host_info.TEMPLATE.HYPERVISOR ? host_info.TEMPLATE.HYPERVISOR.toLowerCase() : "-";
+
+    if (hypervisor_name == "vcenter") {
       Sunstone.updateInfoPanelTab("host_info_panel","host_esx_tab",esx_info_tab);
+    }
+    else
+    {
+      Sunstone.removeInfoPanelTab("host_info_panel","host_esx_tab");
+    }
+
+
+    if (can_import_wilds) {
+      Sunstone.updateInfoPanelTab("host_info_panel","host_wilds_tab",wilds_info_tab);
+    }
+    else
+    {
+      Sunstone.removeInfoPanelTab("host_info_panel","host_wilds_tab");
     }
 
     Sunstone.popUpInfoPanel("host_info_panel", "hosts-tab");
 
     if (host_info.TEMPLATE.HYPERVISOR == "vcenter") {
+      // ESX datatable
       var dataTable_esx_hosts = $("#datatable_host_esx",main_tabs_context).dataTable({
             "bSortClasses" : false,
             "bDeferRender": true
@@ -992,6 +1097,42 @@ function updateHostInfo(request,host){
         dataTable_esx_hosts.fnAddData(host_list_array);
         delete host_info.TEMPLATE.HOST;
       }
+    }
+
+    if (can_import_wilds) {
+      // WILDS datatable
+      var dataTable_wilds_hosts = $("#datatable_host_wilds",main_tabs_context).dataTable({
+       "bSortClasses" : false,
+       "bDeferRender": true
+      });
+
+      var wilds_list_array = [];
+
+      if (host_info.TEMPLATE.VM) {
+        wilds = host_info.TEMPLATE.VM;
+
+        $.each(wilds, function(){
+            name      = this.VM_NAME;
+            safe_name = name.replace(/ /g,"_").replace(/\./g,"_");
+            deploy_id = this.DEPLOY_ID;
+
+            wilds_list_array.push([
+                '<input type="checkbox" id="import_wild_checker" class="import_'+safe_name+'" unchecked/>',
+                name,
+                deploy_id
+            ]);
+
+            dataTable_wilds_hosts.fnAddData(wilds_list_array);
+
+            $(".import_"+safe_name, dataTable_wilds_hosts).data("wild_template", atob(this.IMPORT_TEMPLATE));
+            $(".import_"+safe_name, dataTable_wilds_hosts).data("host_id", host_info.ID);
+
+            wilds_list_array = [];
+          });
+        }
+
+        delete host_info.TEMPLATE.WILDS;
+        delete host_info.TEMPLATE.VM;
     }
 
     var dataTable_host_vMachines = $("#datatable_host_vms", $("#host_info_panel")).dataTable({
@@ -1049,6 +1190,282 @@ function updateHostInfo(request,host){
     });
 }
 
+/*
+  Retrieve the list of templates from vCenter and fill the container with them
+
+  opts = {
+    datacenter: "Datacenter Name",
+    cluster: "Cluster Name",
+    container: Jquery div to inject the html,
+    vcenter_user: vCenter Username,
+    vcenter_password: vCenter Password,
+    vcenter_host: vCenter Host
+  }
+ */
+function fillVCenterTemplates(opts) {
+  var path = '/vcenter/templates';
+  opts.container.html(generateAdvancedSection({
+    html_id: path,
+    title: tr("Templates"),
+    content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+    '</span>'
+  }))
+
+  $('a', opts.container).trigger("click")
+
+  $.ajax({
+      url: path,
+      type: "GET",
+      data: {timeout: false},
+      dataType: "json",
+      headers: {
+        "X_VCENTER_USER": opts.vcenter_user,
+        "X_VCENTER_PASSWORD": opts.vcenter_password,
+        "X_VCENTER_HOST": opts.vcenter_host
+      },
+      success: function(response){
+        $(".content", opts.container).html("");
+
+        $('<div class="row">' +
+            '<div class="large-12 columns">' +
+              '<p style="color: #999">' + tr("Please select the vCenter Templates to be imported to OpenNebula.") + '</p>' +
+            '</div>' +
+          '</div>').appendTo($(".content", opts.container))
+
+        $.each(response, function(datacenter_name, templates){
+          $('<div class="row">' +
+              '<div class="large-12 columns">' +
+                '<h5>' +
+                  datacenter_name + ' ' + tr("DataCenter") +
+                '</h5>' +
+              '</div>' +
+            '</div>').appendTo($(".content", opts.container))
+
+          if (templates.length == 0) {
+              $('<div class="row">' +
+                  '<div class="large-12 columns">' +
+                    '<label>' +
+                      tr("No new templates found in this DataCenter") +
+                    '</label>' +
+                  '</div>' +
+                '</div>').appendTo($(".content", opts.container))
+          } else {
+            $.each(templates, function(id, template){
+              var trow = $('<div class="vcenter_template">' +
+                  '<div class="row">' +
+                    '<div class="large-10 columns">' +
+                      '<label>' +
+                        '<input type="checkbox" class="template_name" checked/> ' +
+                        template.name + '&emsp;<span style="color: #999">' + template.host + '</span>' +
+                      '</label>' +
+                      '<div class="large-12 columns vcenter_template_response">'+
+                      '</div>'+
+                    '</div>' +
+                    '<div class="large-2 columns vcenter_template_result">'+
+                    '</div>'+
+                  '</div>'+
+                '</div>').appendTo($(".content", opts.container))
+
+              $(".template_name", trow).data("template_name", template.name)
+              $(".template_name", trow).data("one_template", template.one)
+            });
+          };
+        });
+      },
+      error: function(response){
+        opts.container.html("");
+        onError({}, OpenNebula.Error(response));
+      }
+  });
+
+  return false;
+}
+
+/*
+  Retrieve the list of networks from vCenter and fill the container with them
+  
+  opts = {
+    datacenter: "Datacenter Name",
+    cluster: "Cluster Name",
+    container: Jquery div to inject the html,
+    vcenter_user: vCenter Username,
+    vcenter_password: vCenter Password,
+    vcenter_host: vCenter Host
+  }
+ */
+function fillVCenterNetworks(opts) {
+  var path = '/vcenter/networks';
+  opts.container.html(generateAdvancedSection({
+    html_id: path,
+    title: tr("Networks"),
+    content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+    '</span>'
+  }))
+
+  $('a', opts.container).trigger("click")
+
+  $.ajax({
+      url: path,
+      type: "GET",
+      data: {timeout: false},
+      dataType: "json",
+      headers: {
+        "X_VCENTER_USER": opts.vcenter_user,
+        "X_VCENTER_PASSWORD": opts.vcenter_password,
+        "X_VCENTER_HOST": opts.vcenter_host
+      },
+      success: function(response){
+        $(".content", opts.container).html("");
+
+        $('<div class="row">' +
+            '<div class="large-12 columns">' +
+              '<p style="color: #999">' + tr("Please select the vCenter Networks to be imported to OpenNebula.") + '</p>' +
+            '</div>' +
+          '</div>').appendTo($(".content", opts.container))
+
+        $.each(response, function(datacenter_name, networks){
+          $('<div class="row">' +
+              '<div class="large-12 columns">' +
+                '<h5>' +
+                  datacenter_name + ' ' + tr("DataCenter") +
+                '</h5>' +
+              '</div>' +
+            '</div>').appendTo($(".content", opts.container))
+
+          if (networks.length == 0) {
+              $('<div class="row">' +
+                  '<div class="large-12 columns">' +
+                    '<label>' +
+                      tr("No new networks found in this DataCenter") +
+                    '</label>' +
+                  '</div>' +
+                '</div>').appendTo($(".content", opts.container))
+          } else {
+            $.each(networks, function(id, network){
+              var netname   = network.name.replace(" ","_");
+              var vlan_info = ""
+
+              if (network.vlan)
+              {
+                   var vlan_info = '<div class="vlan_info">' +
+                        '<div class="large-4 columns">'+
+                          '<label>' + tr("VLAN") + 
+                             '<input type="text" class="vlaninfo" value="'+network.vlan+'" disabled/>' +
+                          '</label>'+
+                        '</div>'+
+                      '</div>';
+              }
+
+              var trow = $('<div class="vcenter_network">' +
+                  '<div class="row">' +
+                    '<div class="large-10 columns">' +
+                      '<div class="large-12 columns">' +
+                        '<label>' +
+                          '<input type="checkbox" class="network_name" checked/> ' +
+                          network.name + '&emsp;<span style="color: #999">' + network.type + '</span>' + 
+                        '</label>' +
+                      '</div>'+
+                      '<div class="large-2 columns">'+
+                        '<label>' + tr("SIZE") +
+                          '<input type="text" class="netsize" value="255"/>' +
+                        '</label>' +
+                      '</div>'+
+                      '<div class="large-2 columns">'+
+                        '<label>' + tr("TYPE") +
+                          '<select class="type_select">'+
+                            '<option value="ETHER">eth</option>' +
+                            '<option value="IP4">ipv4</option>'+
+                            '<option value="IP6">ipv6</option>' + 
+                          '</select>' + 
+                        '</label>' +
+                      '</div>'+
+                      '<div class="net_options">' +
+                        '<div class="large-4 columns">'+
+                          '<label>' + tr("MAC") + 
+                            '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                          '</label>'+
+                        '</div>'+
+                      '</div>'+ 
+                      vlan_info +
+                      '<div class="large-12 columns vcenter_network_response">'+
+                      '</div>'+
+                    '</div>' +
+                    '<div class="large-2 columns vcenter_network_result">'+
+                    '</div>'+
+                  '</div>'+
+                '</div>').appendTo($(".content", opts.container))
+
+
+              $('.type_select', trow).on("change",function(){
+                  var network_context = $(this).closest(".vcenter_network");
+                  var type = $(this).val();
+
+                  var net_form_str = ''
+
+                  switch(type) {
+                      case 'ETHER':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                      case 'IP4':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("IP START") + 
+                                '<input type="text" class="four_ip_net"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                      case 'IP6':
+                          net_form_str = 
+                            '<div class="large-4 columns">'+
+                              '<label>' + tr("MAC") + 
+                                '<input type="text" class="eth_mac_net"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-6 columns">'+
+                              '<label>' + tr("GLOBAL PREFIX") + 
+                                '<input type="text" class="six_global_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>'+
+                            '<div class="large-6 columns">'+
+                              '<label>' + tr("ULA_PREFIX") + 
+                                '<input type="text" class="six_ula_net" placeholder="'+tr("Optional")+'"/>' + 
+                              '</label>'+
+                            '</div>';
+                          break;
+                  }
+
+                  $('.net_options', network_context).html(net_form_str);
+              });
+
+              $(".network_name", trow).data("network_name", netname)
+              $(".network_name", trow).data("one_network", network.one)
+            });
+          };
+        });
+      },
+      error: function(response){
+        opts.container.html("");
+        onError({}, OpenNebula.Error(response));
+      }
+  });
+
+  return false;
+}
+
 //Prepares the host creation dialog
 function setupCreateHostDialog(){
     if ($('#create_host_dialog').length == 0) {
@@ -1062,9 +1479,7 @@ function setupCreateHostDialog(){
     $create_host_dialog.foundation()
 
     $("#wizard_host_reset_button", $create_host_dialog).on("click", function(){
-      $('#create_host_dialog').html("");
-      setupCreateHostDialog();
-      popUpCreateHostDialog();
+      resetCreateHostDialog();
     })
 
     $(".drivers", $create_host_dialog).hide();
@@ -1096,14 +1511,21 @@ function setupCreateHostDialog(){
 
     $("#get_vcenter_clusters", $create_host_dialog).on("click", function(){
       // TODO notify if credentials empty
-      $(".vcenter_clusters", $create_host_dialog).html(
-        '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+      var container = $(".vcenter_clusters", $create_host_dialog); 
+
+      container.html(generateAdvancedSection({
+        html_id: "/vcenter",
+        title: tr("Clusters"),
+        content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
           '<i class="fa fa-cloud fa-stack-2x"></i>'+
           '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-        '</span>')
+        '</span>'
+      }))
+
+      $('a', container).trigger("click")
 
       $.ajax({
-          url: '/vcenter',
+          url: 'vcenter',
           type: "GET",
           data: {timeout: false},
           dataType: "json",
@@ -1119,22 +1541,22 @@ function setupCreateHostDialog(){
               $("#get_vcenter_clusters", $create_host_dialog).hide();
               $(".import_vcenter_clusters_div", $create_host_dialog).show();
 
-              var vcenter_container = $(".vcenter_clusters", $create_host_dialog);
-              vcenter_container.html("");
+              $(".content", container).html("");
+
               $('<div class="row">' +
                   '<div class="large-12 columns">' +
                     '<p style="color: #999">' + tr("Please select the vCenter Clusters to be imported to OpenNebula. Each vCenter Cluster will be included as a new OpenNebula Host") + '</p>' +
                   '</div>' +
-                '</div>').appendTo(vcenter_container)
+                '</div>').appendTo($(".content", container))
 
               $.each(response, function(datacenter_name, clusters){
                 $('<div class="row">' +
                     '<div class="large-12 columns">' +
                       '<h5>' +
-                        datacenter_name + ' ' + tr("Clusters") +
+                        datacenter_name + ' ' + tr("Datacenter") +
                       '</h5>' +
                     '</div>' +
-                  '</div>').appendTo(vcenter_container)
+                  '</div>').appendTo($(".content", container))
 
                 if (clusters.length == 0) {
                     $('<div class="row">' +
@@ -1143,7 +1565,7 @@ function setupCreateHostDialog(){
                             tr("No clusters found in this DataCenter") +
                           '</label>' +
                         '</div>' +
-                      '</div>').appendTo(vcenter_container)
+                      '</div>').appendTo($(".content", container))
                 } else {
                   $.each(clusters, function(id, cluster_name){
                     var row = $('<div class="vcenter_cluster">' +
@@ -1159,210 +1581,34 @@ function setupCreateHostDialog(){
                           '<div class="large-2 columns vcenter_host_result">'+
                           '</div>'+
                         '</div>'+
-                        '<div class="vcenter_templates">'+
-                        '</div>'+
-                        '<div class="vcenter_networks">'+
-                        '</div>'+
-                      '</div>').appendTo(vcenter_container)
+                      '</div>').appendTo($(".content", container))
 
                     $(".cluster_name", row).data("cluster_name", cluster_name)
                     $(".cluster_name", row).data("datacenter_name", datacenter_name)
-                    $(".cluster_name", row).on("change", function(){
-                      var templates_container = $(".vcenter_templates", $(this).closest(".vcenter_cluster"));
-                      if ($(this).is(":checked")) {
-                        var path = '/vcenter/' + $(this).data("datacenter_name") + '/cluster/' + $(this).data("cluster_name");
-                        templates_container.html(generateAdvancedSection({
-                          html_id: path,
-                          title: tr("Templates"),
-                          content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                            '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                            '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-                          '</span>'
-                        }))
-
-                        $('a', templates_container).trigger("click")
-
-                        $.ajax({
-                            url: path,
-                            type: "GET",
-                            data: {timeout: false},
-                            dataType: "json",
-                            headers: {
-                              "X_VCENTER_USER": $("#vcenter_user", $create_host_dialog).val(),
-                              "X_VCENTER_PASSWORD": $("#vcenter_password", $create_host_dialog).val(),
-                              "X_VCENTER_HOST": $("#vcenter_host", $create_host_dialog).val()
-                            },
-                            success: function(response){
-                              $(".content", templates_container).html("");
-
-                              $.each(response, function(id, template){
-                                var trow = $('<div class="vcenter_template">' +
-                                    '<div class="row">' +
-                                      '<div class="large-10 columns">' +
-                                        '<label>' +
-                                          '<input type="checkbox" class="template_name" checked/> ' +
-                                          template.name + '&emsp;<span style="color: #999">' + template.uuid + '</span>' +
-                                        '</label>' +
-                                        '<div class="large-12 columns vcenter_template_response">'+
-                                        '</div>'+
-                                      '</div>' +
-                                      '<div class="large-2 columns vcenter_template_result">'+
-                                      '</div>'+
-                                    '</div>'+
-                                    '<div class="vcenter_templates">'+
-                                    '</div>'+
-                                  '</div>').appendTo($(".content", templates_container))
-
-                                $(".template_name", trow).data("template_name", template.name)
-                                $(".template_name", trow).data("one_template", template.one)
-                              });
-                            },
-                            error: function(response){
-                              templates_container.html("");
-                              onError({}, OpenNebula.Error(response));
-                            }
-                        });
-                      } else {
-                        templates_container.html("");
-                      }
-
-                      var networks_container = $(".vcenter_networks", $(this).closest(".vcenter_cluster"));
-                      if ($(this).is(":checked")) {
-                        var path = '/vcenter/' + $(this).data("datacenter_name") + '/network/' + $(this).data("cluster_name");
-                        networks_container.html(generateAdvancedSection({
-                          html_id: path,
-                          title: tr("Networks"),
-                          content: '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                            '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                            '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-                          '</span>'
-                        }))
-
-                        $('a', networks_container).trigger("click")
-
-                        $.ajax({
-                            url: path,
-                            type: "GET",
-                            data: {timeout: false},
-                            dataType: "json",
-                            headers: {
-                              "X_VCENTER_USER": $("#vcenter_user", $create_host_dialog).val(),
-                              "X_VCENTER_PASSWORD": $("#vcenter_password", $create_host_dialog).val(),
-                              "X_VCENTER_HOST": $("#vcenter_host", $create_host_dialog).val()
-                            },
-                            success: function(response){
-                              $(".content", networks_container).html("");
-
-                              $.each(response, function(id, network){
-                                var netname = network.name.replace(" ","_");
-
-                                var trow = $('<div class="vcenter_network">' +
-                                    '<div class="row">' +
-                                      '<div class="large-10 columns">' +
-                                        '<div class="large-12 columns">' +
-                                          '<label>' +
-                                            '<input type="checkbox" class="network_name" checked/> ' +
-                                            network.name + '&emsp;<span style="color: #999">' + network.type + '</span>' + 
-                                          '</label>' +
-                                        '</div>'+
-                                        '<div class="large-6 columns">'+
-                                          '<label>' + tr("SIZE") +
-                                            '<input type="text" class="netsize" value="255"/>' +
-                                          '</label>' +
-                                        '</div>'+
-                                        '<div class="large-6 columns">'+
-                                          '<label>' + tr("TYPE") +
-                                            '<select class="type_select">'+
-                                              '<option value="ETHER">Ethernet</option>' +
-                                              '<option value="IP4">ipv4</option>'+
-                                              '<option value="IP6">ipv6</option>' + 
-                                            '</select>' + 
-                                          '</label>' +
-                                        '</div>'+
-                                        '<div class="net_options">' +
-                                          '<div class="large-6 columns">'+
-                                            '<label>' + tr("MAC (optional)") + 
-                                              '<input type="text" class="eth_mac_net"/>' + 
-                                            '</label>'+
-                                          '</div>'+
-                                        '</div>'+
-                                        '<div class="large-12 columns vcenter_network_response">'+
-                                        '</div>'+
-                                      '</div>' +
-                                      '<div class="large-2 columns vcenter_network_result">'+
-                                      '</div>'+
-                                    '</div>'+
-                                    '<div class="vcenter_networks">'+
-                                    '</div>'+
-                                  '</div>').appendTo($(".content", networks_container))
-
-
-                                $('.type_select').on("change",function(){
-                                    var network_context = $(this).closest(".vcenter_network");
-                                    var type = $(this).val();
-
-                                    var net_form_str = ''
-
-                                    switch(type) {
-                                        case 'ETHER':
-                                            net_form_str = 
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("MAC (optional)") + 
-                                                  '<input type="text" class="eth_mac_net"/>' + 
-                                                '</label>'+
-                                              '</div>';
-                                            break;
-                                        case 'IP4':
-                                            net_form_str = 
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("IP START") + 
-                                                  '<input type="text" class="four_ip_net"/>' + 
-                                                '</label>'+
-                                              '</div>'+
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("MAC (optional)") + 
-                                                  '<input type="text" class="eth_mac_net"/>' + 
-                                                '</label>'+
-                                              '</div>';
-                                            break;
-                                        case 'IP6':
-                                            net_form_str = 
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("MAC (optional)") + 
-                                                  '<input type="text" class="eth_mac_net"/>' + 
-                                                '</label>'+
-                                              '</div>'+
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("GLOBAL PREFIX (optional)") + 
-                                                  '<input type="text" class="six_global_net"/>' + 
-                                                '</label>'+
-                                              '</div>'+
-                                              '<div class="large-6 columns">'+
-                                                '<label>' + tr("ULA_PREFIX (optional)") + 
-                                                  '<input type="text" class="six_ula_net"/>' + 
-                                                '</label>'+
-                                              '</div>';
-                                            break;
-                                    }
-
-                                    $('.net_options', network_context).html(net_form_str);
-                                });
-
-                                $(".network_name", trow).data("network_name", netname)
-                                $(".network_name", trow).data("one_network", network.one)
-                              });
-                            },
-                            error: function(response){
-                              networks_container.html("");
-                              onError({}, OpenNebula.Error(response));
-                            }
-                        });
-                      } else {
-                        networks_container.html("");
-                      }
-                    })
                   });
                 }
+              });
+
+              var templates_container = $(".vcenter_templates", $create_host_dialog);
+              var vms_container = $(".vcenter_vms", $create_host_dialog);
+              var networks_container = $(".vcenter_networks", $create_host_dialog);
+
+              var vcenter_user = $("#vcenter_user", $create_host_dialog).val();
+              var vcenter_password = $("#vcenter_password", $create_host_dialog).val();
+              var vcenter_host = $("#vcenter_host", $create_host_dialog).val();
+
+              fillVCenterTemplates({
+                container: templates_container,
+                vcenter_user: vcenter_user,
+                vcenter_password: vcenter_password,
+                vcenter_host: vcenter_host
+              });
+
+              fillVCenterNetworks({
+                container: networks_container,
+                vcenter_user: vcenter_user,
+                vcenter_password: vcenter_password,
+                vcenter_host: vcenter_host
               });
           },
           error: function(response){
@@ -1421,145 +1667,6 @@ function setupCreateHostDialog(){
 
               Sunstone.runAction("Host.update_template", response.HOST.ID, template_raw);
               addHostElement(request, response);
-
-              $.each($(".template_name:checked", cluster_context), function(){
-                var template_context = $(this).closest(".vcenter_template");
-
-                $(".vcenter_template_result:not(.success)", template_context).html(
-                    '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-                    '</span>');
-
-                var template_json = {
-                  "vmtemplate": {
-                    "template_raw": $(this).data("one_template")
-                  }
-                };
-
-                OpenNebula.Template.create({
-                    timeout: true,
-                    data: template_json,
-                    success: function(request, response) {
-                      OpenNebula.Helper.clear_cache("VMTEMPLATE");
-                      $(".vcenter_template_result", template_context).addClass("success").html(
-                          '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                            '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                            '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
-                          '</span>');
-
-                      $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="running-color">'+
-                            tr("Template created successfully")+' ID:'+response.VMTEMPLATE.ID+
-                          '</p>');
-                    },
-                    error: function (request, error_json){
-                        $(".vcenter_template_result", template_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                              '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                              '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
-                            '</span>');
-
-                        $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="error-color">'+
-                              (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
-                            '</p>');
-                    }
-                });
-              })
-
-              $.each($(".network_name:checked", cluster_context), function(){
-                var network_context = $(this).closest(".vcenter_network");
-
-                $(".vcenter_network_result:not(.success)", network_context).html(
-                    '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                      '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
-                    '</span>');
-
-                var network_size = $(".netsize", network_context).val();
-                var network_tmpl = $(this).data("one_network");
-                var netname      = $(this).data("network_name");
-                var type         = $('.type_select', network_context).val();
-
-                var ar_array = [];
-                ar_array.push("TYPE=" + type);
-                ar_array.push("SIZE=" + network_size);
-
-                switch(type) {
-                    case 'ETHER':
-                        var mac = $('.eth_mac_net', network_context).val();
-
-                        if (mac){
-                          ar_array.push("MAC=" + mac);
-                        }
-
-                        break;
-                    case 'IP4':
-                        var mac = $('.four_mac_net', network_context).val();
-                        var ip = $('.four_ip_net', network_context).val();
-
-                        if (mac){
-                          ar_array.push("MAC=" + mac);
-                        }
-                        if (ip) {
-                          ar_array.push("IP=" + ip);
-                        }
-
-                        break;
-                    case 'IP6':
-                        var mac = $('.six_mac_net', network_context).val();
-                        var gp = $('.six_global_net', network_context).val();
-                        var ula = $('.six_mac_net', network_context).val();
-
-                        if (mac){
-                          ar_array.push("MAC=" + mac);
-                        }
-                        if (gp) {
-                          ar_array.push("GLOBAL_PREFIX=" + gp);
-                        }
-                        if (ula){
-                          ar_array.push("ULA_PREFIX=" + ula);
-                        }
-
-                        break;
-                }
-
-                network_tmpl += "\nAR=[" 
-                network_tmpl += ar_array.join(",\n")
-                network_tmpl += "]"
-
-                var vnet_json = {
-                  "vnet": {
-                    "vnet_raw": network_tmpl
-                  }
-                };
-
-                OpenNebula.Network.create({
-                    timeout: true,
-                    data: vnet_json,
-                    success: function(request, response) {
-                      OpenNebula.Helper.clear_cache("VNET");
-                      $(".vcenter_network_result", network_context).addClass("success").html(
-                          '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                            '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                            '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
-                          '</span>');
-
-                      $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="running-color">'+
-                            tr("Virtual Network created successfully")+' ID:'+response.VNET.ID+
-                          '</p>');
-                    },
-                    error: function (request, error_json){
-                        $(".vcenter_network_result", network_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
-                              '<i class="fa fa-cloud fa-stack-2x"></i>'+
-                              '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
-                            '</span>');
-
-                        $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="error-color">'+
-                              (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
-                            '</p>');
-                    }
-                });
-              })
-
             },
             error: function (request, error_json){
                 $(".vcenter_host_result",  $create_host_dialog).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
@@ -1573,6 +1680,204 @@ function setupCreateHostDialog(){
             }
         });
       })
+
+      $.each($(".template_name:checked", $create_host_dialog), function(){
+        var template_context = $(this).closest(".vcenter_template");
+
+        $(".vcenter_template_result:not(.success)", template_context).html(
+            '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+              '<i class="fa fa-cloud fa-stack-2x"></i>'+
+              '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+            '</span>');
+
+        var template_json = {
+          "vmtemplate": {
+            "template_raw": $(this).data("one_template")
+          }
+        };
+
+        OpenNebula.Template.create({
+            timeout: true,
+            data: template_json,
+            success: function(request, response) {
+              OpenNebula.Helper.clear_cache("VMTEMPLATE");
+              $(".vcenter_template_result", template_context).addClass("success").html(
+                  '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                    '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                    '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
+                  '</span>');
+
+              $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="running-color">'+
+                    tr("Template created successfully")+' ID:'+response.VMTEMPLATE.ID+
+                  '</p>');
+            },
+            error: function (request, error_json){
+                $(".vcenter_template_result", template_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                      '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
+                    '</span>');
+
+                $(".vcenter_template_response", template_context).html('<p style="font-size:12px" class="error-color">'+
+                      (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
+                    '</p>');
+            }
+        });
+      })
+
+      $.each($(".vm_name:checked", $create_host_dialog), function(){
+        var vm_context = $(this).closest(".vcenter_vm");
+
+        $(".vcenter_vm_result:not(.success)", vm_context).html(
+            '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+              '<i class="fa fa-cloud fa-stack-2x"></i>'+
+              '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+            '</span>');
+
+        var vm_json = {
+          "vm": {
+            "vm_raw": $(this).data("one_vm")
+          }
+        };
+
+        var host_id_to_deploy = $(this).data("vm_to_host");
+
+        OpenNebula.VM.create({
+            timeout: true,
+            data: vm_json,
+            success: function(request, response) {
+              OpenNebula.Helper.clear_cache("VM");
+
+              var extra_info = {};
+
+              extra_info['host_id'] = host_id_to_deploy;
+              extra_info['ds_id']   = -1;
+              extra_info['enforce'] = false;
+
+              Sunstone.runAction("VM.deploy_action", response.VM.ID, extra_info);
+
+              $(".vcenter_vm_result", vm_context).addClass("success").html(
+                  '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                    '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                    '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
+                  '</span>');
+
+              $(".vcenter_vm_response", vm_context).html('<p style="font-size:12px" class="running-color">'+
+                    tr("VM imported successfully")+' ID:'+response.VM.ID+
+                  '</p>');
+            },
+            error: function (request, error_json){
+                $(".vcenter_vm_response", vm_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                      '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
+                    '</span>');
+
+                $(".vcenter_vm_response", vm_context).html('<p style="font-size:12px" class="error-color">'+
+                      (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
+                    '</p>');
+            }
+        });
+      })
+
+      $.each($(".network_name:checked", $create_host_dialog), function(){
+        var network_context = $(this).closest(".vcenter_network");
+
+        $(".vcenter_network_result:not(.success)", network_context).html(
+            '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+              '<i class="fa fa-cloud fa-stack-2x"></i>'+
+              '<i class="fa  fa-spinner fa-spin fa-stack-1x fa-inverse"></i>'+
+            '</span>');
+
+        var network_size = $(".netsize", network_context).val();
+        var network_tmpl = $(this).data("one_network");
+        var netname      = $(this).data("network_name");
+        var type         = $('.type_select', network_context).val();
+
+        var ar_array = [];
+        ar_array.push("TYPE=" + type);
+        ar_array.push("SIZE=" + network_size);
+
+        switch(type) {
+            case 'ETHER':
+                var mac = $('.eth_mac_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+
+                break;
+            case 'IP4':
+                var mac = $('.four_mac_net', network_context).val();
+                var ip = $('.four_ip_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+                if (ip) {
+                  ar_array.push("IP=" + ip);
+                }
+
+                break;
+            case 'IP6':
+                var mac = $('.six_mac_net', network_context).val();
+                var gp = $('.six_global_net', network_context).val();
+                var ula = $('.six_mac_net', network_context).val();
+
+                if (mac){
+                  ar_array.push("MAC=" + mac);
+                }
+                if (gp) {
+                  ar_array.push("GLOBAL_PREFIX=" + gp);
+                }
+                if (ula){
+                  ar_array.push("ULA_PREFIX=" + ula);
+                }
+
+                break;
+        }
+
+        network_tmpl += "\nAR=[" 
+        network_tmpl += ar_array.join(",\n")
+        network_tmpl += "]"
+
+        if($(".vlaninfo", network_context))
+        {
+           network_tmpl += "VLAN=\"YES\"\n";
+           network_tmpl += "VLAN_ID="+$(".vlaninfo", network_context).val()+"\n";
+        }
+
+        var vnet_json = {
+          "vnet": {
+            "vnet_raw": network_tmpl
+          }
+        };
+
+        OpenNebula.Network.create({
+            timeout: true,
+            data: vnet_json,
+            success: function(request, response) {
+              OpenNebula.Helper.clear_cache("VNET");
+              $(".vcenter_network_result", network_context).addClass("success").html(
+                  '<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                    '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                    '<i class="fa  fa-check fa-stack-1x fa-inverse"></i>'+
+                  '</span>');
+
+              $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="running-color">'+
+                    tr("Virtual Network created successfully")+' ID:'+response.VNET.ID+
+                  '</p>');
+            },
+            error: function (request, error_json){
+                $(".vcenter_network_result", network_context).html('<span class="fa-stack fa-2x" style="color: #dfdfdf">'+
+                      '<i class="fa fa-cloud fa-stack-2x"></i>'+
+                      '<i class="fa  fa-warning fa-stack-1x fa-inverse"></i>'+
+                    '</span>');
+
+                $(".vcenter_network_response", network_context).html('<p style="font-size:12px" class="error-color">'+
+                      (error_json.error.message || tr("Cannot contact server: is it running and reachable?"))+
+                    '</p>');
+            }
+        });
+      });
 
       return false
     });
@@ -1601,6 +1906,14 @@ function setupCreateHostDialog(){
             $('input[name="custom_vnm_mad"]').parent().show();
         else
             $('input[name="custom_vnm_mad"]').parent().hide();
+    });
+
+    $('#create_host_form').on("keyup keypress", function(e) {
+      var code = e.keyCode || e.which; 
+      if (code  == 13) {               
+        e.preventDefault();
+        return false;
+      }
     });
 
     //Handle the form submission
@@ -1638,20 +1951,25 @@ function setupCreateHostDialog(){
     });
 }
 
+function resetCreateHostDialog(){
+  $create_host_dialog.empty();
+  setupCreateHostDialog();
+
+  $create_host_dialog = $('div#create_host_dialog');
+
+  var cluster_id = $('#host_cluster_id .resource_list_select', $create_host_dialog).val();
+  if (!cluster_id) cluster_id = "-1";
+
+  insertSelectOptions('#host_cluster_id', $create_host_dialog, "Cluster", cluster_id, false);
+  $("input#name", $create_host_dialog).focus();
+  return false;
+}
+
 //Open creation dialogs
 function popUpCreateHostDialog(){
-    $create_host_dialog.foundation('reveal', 'close');
-    $create_host_dialog.empty();
-    setupCreateHostDialog();
-
-    var cluster_id = $('#host_cluster_id .resource_list_select',$('div#create_host_dialog')).val();
-    if (!cluster_id) cluster_id = "-1";
-
-    insertSelectOptions('#host_cluster_id',$('div#create_host_dialog'), "Cluster", cluster_id, false);
-
-    $("#create_host_dialog").foundation('reveal', 'open');
-    $("input#name",$("#create_host_dialog")).focus();
-    return false;
+  resetCreateHostDialog();
+  $create_host_dialog.foundation('reveal', 'open');
+  return false;
 }
 
 // Call back when individual host history monitoring fails

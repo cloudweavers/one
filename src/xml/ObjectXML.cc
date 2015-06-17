@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -564,7 +564,7 @@ int ObjectXML::validate_xml(const string &xml_doc)
 
 void ObjectXML::xml_parse(const string &xml_doc)
 {
-    xml = xmlParseMemory (xml_doc.c_str(),xml_doc.length());
+    xml = xmlReadMemory (xml_doc.c_str(),xml_doc.length(),0,0,XML_PARSE_HUGE);
 
     if (xml == 0)
     {

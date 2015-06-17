@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -24,39 +24,90 @@ module OpenNebula
         #######################################################################
 
         VM_METHODS = {
-            :info       => "vm.info",
-            :allocate   => "vm.allocate",
-            :action     => "vm.action",
-            :migrate    => "vm.migrate",
-            :deploy     => "vm.deploy",
-            :savedisk   => "vm.savedisk",
-            :chown      => "vm.chown",
-            :chmod      => "vm.chmod",
-            :monitoring => "vm.monitoring",
-            :attach     => "vm.attach",
-            :detach     => "vm.detach",
-            :rename     => "vm.rename",
-            :update     => "vm.update",
-            :resize     => "vm.resize",
+            :info           => "vm.info",
+            :allocate       => "vm.allocate",
+            :action         => "vm.action",
+            :migrate        => "vm.migrate",
+            :deploy         => "vm.deploy",
+            :chown          => "vm.chown",
+            :chmod          => "vm.chmod",
+            :monitoring     => "vm.monitoring",
+            :attach         => "vm.attach",
+            :detach         => "vm.detach",
+            :rename         => "vm.rename",
+            :update         => "vm.update",
+            :resize         => "vm.resize",
             :snapshotcreate => "vm.snapshotcreate",
             :snapshotrevert => "vm.snapshotrevert",
             :snapshotdelete => "vm.snapshotdelete",
-            :attachnic  => "vm.attachnic",
-            :detachnic  => "vm.detachnic",
-            :resize     => "vm.resize",
-            :recover    => "vm.recover"
+            :attachnic      => "vm.attachnic",
+            :detachnic      => "vm.detachnic",
+            :recover        => "vm.recover",
+            :disksaveas     => "vm.disksaveas",
+            :disksnapshotcreate => "vm.disksnapshotcreate",
+            :disksnapshotrevert => "vm.disksnapshotrevert",
+            :disksnapshotdelete => "vm.disksnapshotdelete"
         }
 
         VM_STATE=%w{INIT PENDING HOLD ACTIVE STOPPED SUSPENDED DONE FAILED
             POWEROFF UNDEPLOYED}
 
-        LCM_STATE=%w{LCM_INIT PROLOG BOOT RUNNING MIGRATE SAVE_STOP SAVE_SUSPEND
-            SAVE_MIGRATE PROLOG_MIGRATE PROLOG_RESUME EPILOG_STOP EPILOG
-            SHUTDOWN CANCEL FAILURE CLEANUP_RESUBMIT UNKNOWN HOTPLUG SHUTDOWN_POWEROFF
-            BOOT_UNKNOWN BOOT_POWEROFF BOOT_SUSPENDED BOOT_STOPPED CLEANUP_DELETE
-            HOTPLUG_SNAPSHOT HOTPLUG_NIC HOTPLUG_SAVEAS HOTPLUG_SAVEAS_POWEROFF
-            HOTPLUG_SAVEAS_SUSPENDED SHUTDOWN_UNDEPLOY EPILOG_UNDEPLOY
-            PROLOG_UNDEPLOY BOOT_UNDEPLOY}
+        LCM_STATE=%w{
+            LCM_INIT
+            PROLOG
+            BOOT
+            RUNNING
+            MIGRATE
+            SAVE_STOP
+            SAVE_SUSPEND
+            SAVE_MIGRATE
+            PROLOG_MIGRATE
+            PROLOG_RESUME
+            EPILOG_STOP
+            EPILOG
+            SHUTDOWN
+            CANCEL
+            FAILURE
+            CLEANUP_RESUBMIT
+            UNKNOWN
+            HOTPLUG
+            SHUTDOWN_POWEROFF
+            BOOT_UNKNOWN
+            BOOT_POWEROFF
+            BOOT_SUSPENDED
+            BOOT_STOPPED
+            CLEANUP_DELETE
+            HOTPLUG_SNAPSHOT
+            HOTPLUG_NIC
+            HOTPLUG_SAVEAS
+            HOTPLUG_SAVEAS_POWEROFF
+            HOTPLUG_SAVEAS_SUSPENDED
+            SHUTDOWN_UNDEPLOY
+            EPILOG_UNDEPLOY
+            PROLOG_UNDEPLOY
+            BOOT_UNDEPLOY
+            HOTPLUG_PROLOG_POWEROFF
+            HOTPLUG_EPILOG_POWEROFF
+            BOOT_MIGRATE
+            BOOT_FAILURE
+            BOOT_MIGRATE_FAILURE
+            PROLOG_MIGRATE_FAILURE
+            PROLOG_FAILURE
+            EPILOG_FAILURE
+            EPILOG_STOP_FAILURE
+            EPILOG_UNDEPLOY_FAILURE
+            PROLOG_MIGRATE_POWEROFF
+            PROLOG_MIGRATE_POWEROFF_FAILURE
+            PROLOG_MIGRATE_SUSPEND
+            PROLOG_MIGRATE_SUSPEND_FAILURE
+            BOOT_UNDEPLOY_FAILURE
+            BOOT_STOPPED_FAILURE
+            PROLOG_RESUME_FAILURE
+            PROLOG_UNDEPLOY_FAILURE
+            DISK_SNAPSHOT_POWEROFF
+            DISK_SNAPSHOT_REVERT_POWEROFF
+            DISK_SNAPSHOT_DELETE_POWEROFF
+        }
 
         SHORT_VM_STATES={
             "INIT"      => "init",
@@ -103,7 +154,28 @@ module OpenNebula
             "SHUTDOWN_UNDEPLOY" => "shut",
             "EPILOG_UNDEPLOY"   => "epil",
             "PROLOG_UNDEPLOY"   => "prol",
-            "BOOT_UNDEPLOY"     => "boot"
+            "BOOT_UNDEPLOY"     => "boot",
+            "HOTPLUG_PROLOG_POWEROFF"   => "hotp",
+            "HOTPLUG_EPILOG_POWEROFF"   => "hotp",
+            "BOOT_MIGRATE"              => "boot",
+            "BOOT_FAILURE"              => "fail",
+            "BOOT_MIGRATE_FAILURE"      => "fail",
+            "PROLOG_MIGRATE_FAILURE"    => "fail",
+            "PROLOG_FAILURE"            => "fail",
+            "EPILOG_FAILURE"            => "fail",
+            "EPILOG_STOP_FAILURE"       => "fail",
+            "EPILOG_UNDEPLOY_FAILURE"   => "fail",
+            "PROLOG_MIGRATE_POWEROFF"   => "migr",
+            "PROLOG_MIGRATE_POWEROFF_FAILURE"   => "fail",
+            "PROLOG_MIGRATE_SUSPEND"            => "migr",
+            "PROLOG_MIGRATE_SUSPEND_FAILURE"    => "fail",
+            "BOOT_UNDEPLOY_FAILURE"     => "fail",
+            "BOOT_STOPPED_FAILURE"      => "fail",
+            "PROLOG_RESUME_FAILURE"     => "fail",
+            "PROLOG_UNDEPLOY_FAILURE"   => "fail",
+            "DISK_SNAPSHOT_POWEROFF"    => "snap",
+            "DISK_SNAPSHOT_REVERT_POWEROFF" => "snap",
+            "DISK_SNAPSHOT_DELETE_POWEROFF" => "snap"
         }
 
         MIGRATE_REASON=%w{NONE ERROR USER}
@@ -117,7 +189,14 @@ module OpenNebula
         HISTORY_ACTION=%w{none migrate live-migrate shutdown shutdown-hard
             undeploy undeploy-hard hold release stop suspend resume boot delete
             delete-recreate reboot reboot-hard resched unresched poweroff
-            poweroff-hard}
+            poweroff-hard disk-attach disk-detach nic-attach nic-detach}
+
+        EXTERNAL_IP_ATTRS = [
+            'GUEST_IP',
+            'AWS_IP_ADDRESS',
+            'AZ_IPADDRESS',
+            'SL_PRIMARYIPADDRESS'
+        ]
 
         # Creates a VirtualMachine description with just its identifier
         # this method should be used to create plain VirtualMachine objects.
@@ -340,13 +419,6 @@ module OpenNebula
             delete(recreate)
         end
 
-        # Forces a re-deployment of a VM in UNKNOWN or BOOT state
-        def boot
-            action('boot')
-        end
-
-        alias_method :restart, :boot
-
         # @deprecated use {#delete} instead
         def resubmit
             action('delete-recreate')
@@ -372,12 +444,14 @@ module OpenNebula
         # @param enforce [true|false] If it is set to true, the host capacity
         #   will be checked, and the deployment will fail if the host is
         #   overcommited. Defaults to false
+        # @param ds_id [Integer] The System Datastore where to migrate the VM.
+        #   To use the current one, set it to -1
         #
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         #   otherwise
-        def migrate(host_id, live=false, enforce=false)
+        def migrate(host_id, live=false, enforce=false, ds_id=-1)
             call(VM_METHODS[:migrate], @pe_id, host_id.to_i, live==true,
-                enforce)
+                enforce, ds_id.to_i)
         end
 
         # @deprecated use {#migrate} instead
@@ -385,7 +459,7 @@ module OpenNebula
             migrate(host_id, true, enforce)
         end
 
-        # Set the specified vm's disk to be saved in a new image
+        # Set the specified vm's disk to be saved as a new image
         # when the VirtualMachine shutdowns
         #
         # @param disk_id [Integer] ID of the disk to be saved
@@ -393,30 +467,21 @@ module OpenNebula
         #   disk will be saved
         # @param image_type [String] Type of the new image. Set to empty string
         #   to use the default type
-        # @param hot [true|false] True to save the disk immediately, false will
-        #   perform the operation when the VM shuts down
-        # @param do_template [true|false] True to clone also the VM originating
-        # template and replace the disk with the saved image
+        # @param snap_id [Integer] ID of the snapshot to save, -1 to use the
+        # current disk image state
         #
         # @return [Integer, OpenNebula::Error] the new Image ID in case of
         #   success, error otherwise
-        def disk_snapshot(disk_id, image_name, image_type="", hot=false,
-            do_template=false)
+        def disk_saveas(disk_id, image_name, image_type="", snap_id=-1)
             return Error.new('ID not defined') if !@pe_id
 
-            rc = @client.call(VM_METHODS[:savedisk],
+            rc = @client.call(VM_METHODS[:disksaveas],
                               @pe_id,
                               disk_id,
                               image_name,
                               image_type,
-                              hot,
-                              do_template)
+                              snap_id)
             return rc
-        end
-
-        # @deprecated use {#disk_snapshot}
-        def save_as(disk_id, image_name, image_type="", hot=false)
-            return disk_snapshot(disk_id, image_name, image_type, hot)
         end
 
         # Resize the VM
@@ -540,9 +605,42 @@ module OpenNebula
             return call(VM_METHODS[:snapshotdelete], @pe_id, snap_id)
         end
 
+        # Takes a new snapshot of a disk
+        #
+        # @param disk_id [Integer] Id of the disk
+        # @param tag [String] description for the snapshot
+        #
+        # @return [Integer, OpenNebula::Error] The new snapshot ID or error
+        def disk_snapshot_create(disk_id, tag)
+          return call(VM_METHODS[:disksnapshotcreate], @pe_id, disk_id, tag)
+        end
+
+        # Reverts disk state to a previously taken snapshot
+        #
+        # @param disk_id [Integer] Id of the disk
+        # @param snap_id [Integer] Id of the snapshot
+        #
+        # @return [nil, OpenNebula::Error] nil in case of success, Error
+        #   otherwise
+        def disk_snapshot_revert(disk_id, snap_id)
+          return call(VM_METHODS[:disksnapshotrevert], @pe_id, disk_id, snap_id)
+        end
+
+        # Deletes a disk snapshot
+        #
+        # @param disk_id [Integer] Id of the disk
+        # @param snap_id [Integer] Id of the snapshot
+        #
+        # @return [nil, OpenNebula::Error] nil in case of success, Error
+        #   otherwise
+        def disk_snapshot_delete(disk_id, snap_id)
+          return call(VM_METHODS[:disksnapshotdelete], @pe_id, disk_id, snap_id)
+        end
+
         # Recovers an ACTIVE VM
         #
-        # @param result [Boolean] Recover with success (true) or failure (false)
+        # @param result [Integer] Recover with failure (0), success (1) or
+        # retry (2)
         # @param result [info] Additional information needed to recover the VM
         # @return [nil, OpenNebula::Error] nil in case of success, Error
         #   otherwise
@@ -596,6 +694,124 @@ module OpenNebula
             self['DEPLOY_ID']
         end
 
+        # Clones the VM's source Template, replacing the disks with live snapshots
+        # of the current disks. The VM capacity and NICs are also preserved
+        #
+        # @param name [String] Name for the new Template
+        #
+        # @return [Integer, OpenNebula::Error] the new Template ID in case of
+        #   success, error otherwise
+        def save_as_template(name)
+            rc = info()
+            return rc if OpenNebula.is_error?(rc)
+
+            tid = self['TEMPLATE/TEMPLATE_ID']
+            if tid.nil? || tid.empty?
+                return Error.new('VM has no template to be saved')
+            end
+
+            if state_str() != "POWEROFF"
+                return Error.new("VM state must be POWEROFF, "<<
+                    "current state is #{state_str()}, #{lcm_state_str()}")
+            end
+
+            # Clone the source template
+            new_tid = OpenNebula::Template.new_with_id(tid, @client).clone(name)
+            return new_tid if OpenNebula.is_error?(new_tid)
+
+            # Replace the original template's capacity with the actual VM values
+            replace = ""
+
+            cpu = self['TEMPLATE/CPU']
+            if !cpu.nil? && !cpu.empty?
+                replace << "CPU = #{cpu}\n"
+            end
+
+            vcpu = self['TEMPLATE/VCPU']
+            if !vcpu.nil? && !vcpu.empty?
+                replace << "VCPU = #{vcpu}\n"
+            end
+
+            mem = self['TEMPLATE/MEMORY']
+            if !mem.nil? && !mem.empty?
+                replace << "MEMORY = #{mem}\n"
+            end
+
+            self.each('TEMPLATE/DISK') do |disk|
+                # While the previous snapshot is still in progress, we wait
+                # indefinitely
+                rc = info()
+                return rc if OpenNebula.is_error?(rc)
+
+                steps = 0
+                while lcm_state_str() == "HOTPLUG_SAVEAS_POWEROFF"
+                    if steps < 30
+                        sleep 1
+                    else
+                        sleep 15
+                    end
+
+                    rc = info()
+                    return rc if OpenNebula.is_error?(rc)
+
+                    steps += 1
+                end
+
+                # If the VM is not busy with a previous disk snapshot, we wait
+                # but this time with a timeout
+                rc = wait_state("POWEROFF")
+                return rc if OpenNebula.is_error?(rc)
+
+                disk_id = disk["DISK_ID"]
+                if disk_id.nil? || disk_id.empty?
+                    return Error.new('The DISK_ID is missing from the VM template')
+                end
+
+                image_id = disk["IMAGE_ID"]
+
+                if !image_id.nil? && !image_id.empty?
+                    rc = disk_saveas(disk_id.to_i,"#{name}-disk-#{disk_id}","",-1)
+
+                    return rc if OpenNebula.is_error?(rc)
+
+                    replace << "DISK = [ IMAGE_ID = #{rc} ]\n"
+                else
+                    # Volatile disks cannot be saved, so the definition is copied
+                    replace << self.template_like_str(
+                        "TEMPLATE", true, "DISK[DISK_ID=#{disk_id}]") << "\n"
+                end
+            end
+
+            self.each('TEMPLATE/NIC') do |nic|
+                nic_id = nic["NIC_ID"]
+                if nic_id.nil? || nic_id.empty?
+                    return Error.new('The NIC_ID is missing from the VM template')
+                end
+
+                net_id = nic["NETWORK_ID"]
+
+                if !net_id.nil? && !net_id.empty?
+                    replace << "NIC = [ NETWORK_ID = #{net_id} ]\n"
+                else
+                    # This NIC does not use a Virtual Network
+                    replace << self.template_like_str(
+                        "TEMPLATE", true, "NIC[NIC_ID=#{nic_id}]") << "\n"
+                end
+            end
+
+            # Required by the Sunstone Cloud View
+            replace << "SAVED_TEMPLATE_ID = #{tid}\n"
+
+            new_tmpl = OpenNebula::Template.new_with_id(new_tid, @client)
+
+            rc = new_tmpl.update(replace, true)
+            return rc if OpenNebula.is_error?(rc)
+
+            return new_tid
+
+            # TODO: rollback in case of error
+        end
+
     private
         def action(name)
             return Error.new('ID not defined') if !@pe_id
@@ -604,6 +820,50 @@ module OpenNebula
             rc = nil if !OpenNebula.is_error?(rc)
 
             return rc
+        end
+
+        def wait_state(state, timeout=10)
+            vm_state = ""
+            lcm_state = ""
+
+            timeout.times do
+                rc = info()
+                return rc if OpenNebula.is_error?(rc)
+
+                vm_state = state_str()
+                lcm_state = lcm_state_str()
+
+                if vm_state == state
+                    return true
+                end
+
+                sleep 1
+            end
+
+            return Error.new("Timeout expired for state #{state}. "<<
+                "VM is in state #{vm_state}, #{lcm_state}")
+        end
+
+        def wait_lcm_state(state, timeout=10)
+            vm_state = ""
+            lcm_state = ""
+
+            timeout.times do
+                rc = info()
+                return rc if OpenNebula.is_error?(rc)
+
+                vm_state = state_str()
+                lcm_state = lcm_state_str()
+
+                if lcm_state == state
+                    return true
+                end
+
+                sleep 1
+            end
+
+            return Error.new("Timeout expired for state #{state}. "<<
+                "VM is in state #{vm_state}, #{lcm_state}")
         end
     end
 end

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -315,6 +315,23 @@ public:
     {
         return static_cast<SecurityGroupPool*>(pool)->get(name, uid, lock);
     };
+};
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class VdcRename : public RequestManagerRename
+{
+public:
+    VdcRename():
+        RequestManagerRename("VdcRename", "Renames a VDC")
+    {
+        Nebula& nd  = Nebula::instance();
+        pool        = nd.get_vdcpool();
+        auth_object = PoolObjectSQL::VDC;
+    };
+
+    ~VdcRename(){};
 };
 
 /* -------------------------------------------------------------------------- */

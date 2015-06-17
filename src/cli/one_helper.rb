@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -28,7 +28,7 @@ include OpenNebula
 module OpenNebulaHelper
     ONE_VERSION=<<-EOT
 OpenNebula #{OpenNebula::VERSION}
-Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs
+Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
 not use this file except in compliance with the License. You may obtain
@@ -167,15 +167,6 @@ EOT
             :short => "-r",
             :description =>
                 "Which resources can be created by group users "<<
-                "(VM+NET+IMAGE+TEMPLATE by default)",
-            :format => String
-        },
-        {
-            :name   => 'admin_resources',
-            :large  => '--admin_resources res_str',
-            :short => "-o",
-            :description =>
-                "Which resources can be created by the admin user "<<
                 "(VM+NET+IMAGE+TEMPLATE by default)",
             :format => String
         }

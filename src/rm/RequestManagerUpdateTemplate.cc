@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -95,8 +95,8 @@ void RequestManagerUpdateTemplate::request_execute(
 
     object = pool->get(oid,true);
 
-    if ( object == 0 )                             
-    {                                            
+    if ( object == 0 )
+    {
         failure_response(NO_EXISTS,
                 get_error(object_name(auth_object),oid),
                 att);

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -125,7 +125,7 @@ class EC2Driver
                     :proc => lambda {|str| str.split(',')}
                 },
                 "AVAILABILITYZONE" => {
-                    :opt => 'placement/availability-zone'
+                    :opt => 'placement/availability_zone'
                 },
                 "EBS_OPTIMIZED" => {
                     :opt => 'ebs_optimized'
@@ -172,7 +172,7 @@ class EC2Driver
             :cmd => :create_tags,
             :args => {
                 "TAGS" => {
-                    :opt  => '-t',
+                    :opt  => 'tags',
                     :proc => lambda {|str|
                         hash = {}
                         str.split(',').each {|s|
@@ -198,7 +198,8 @@ class EC2Driver
         :ip_address,
         :subnet_id,
         :security_groups,
-        :instance_type
+        :instance_type,
+        :image_id
     ]
 
     # EC2 constructor, loads credentials and endpoint
@@ -251,7 +252,8 @@ class EC2Driver
             exit(-1)
         end
 
-        tags = generate_options(:tags, ec2_info) || {}
+        tags = generate_options(:tags, ec2_info)['tags'] || {}
+        
         tags['ONE_ID'] = id
         tags.each{ |key,value|
             begin
@@ -339,11 +341,16 @@ class EC2Driver
 
                 poll_data=parse_poll(i)
 
+                vm_template_to_one = vm_to_one(i)
+                vm_template_to_one = Base64.encode64(vm_template_to_one).gsub("\n","")
+
                 one_id = i.tags['ONE_ID']
 
                 vms_info << "VM=[\n"
                 vms_info << "  ID=#{one_id || -1},\n"
                 vms_info << "  DEPLOY_ID=#{i.instance_id},\n"
+                vms_info << "  VM_NAME=#{i.instance_id},\n"
+                vms_info << "  IMPORT_TEMPLATE=\"#{vm_template_to_one}\",\n"
                 vms_info << "  POLL=\"#{poll_data}\" ]\n"
 
                 if one_id
@@ -419,44 +426,50 @@ private
         ec2
     end
 
-    # Retrive the vm information from the EC2 instance
+    # Retrieve the vm information from the EC2 instance
     def parse_poll(instance)
-        info =  "#{POLL_ATTRIBUTE[:usedmemory]}=0 " \
-                "#{POLL_ATTRIBUTE[:usedcpu]}=0 " \
-                "#{POLL_ATTRIBUTE[:nettx]}=0 " \
-                "#{POLL_ATTRIBUTE[:netrx]}=0 "
+        begin
+            info =  "#{POLL_ATTRIBUTE[:usedmemory]}=0 " \
+                    "#{POLL_ATTRIBUTE[:usedcpu]}=0 " \
+                    "#{POLL_ATTRIBUTE[:nettx]}=0 " \
+                    "#{POLL_ATTRIBUTE[:netrx]}=0 "
 
-        state = ""
-        if !instance.exists?
-            state = VM_STATE[:deleted]
-        else
-            state = case instance.status
-            when :pending
-                VM_STATE[:active]
-            when :running
-                VM_STATE[:active]
-            when :'shutting-down', :terminated
-                VM_STATE[:deleted]
+            state = ""
+            if !instance.exists?
+                state = VM_STATE[:deleted]
             else
-                VM_STATE[:deleted]
-            end
-        end
-        info << "#{POLL_ATTRIBUTE[:state]}=#{state} "
-
-        EC2_POLL_ATTRS.map { |key|
-            value = instance.send(key)
-            if !value.nil? && !value.empty?
-                if value.is_a?(Array)
-                    value = value.map {|v|
-                        v.security_group_id if v.is_a?(AWS::EC2::SecurityGroup)
-                    }.join(",")
+                state = case instance.status
+                when :pending
+                    VM_STATE[:active]
+                when :running
+                    VM_STATE[:active]
+                when :'shutting-down', :terminated
+                    VM_STATE[:deleted]
+                else
+                    VM_STATE[:unknown]
                 end
-
-                info << "AWS_#{key.to_s.upcase}=#{URI::encode(value)} "
             end
-        }
+            info << "#{POLL_ATTRIBUTE[:state]}=#{state} "
 
-        info
+            EC2_POLL_ATTRS.map { |key|
+                value = instance.send(key)
+                if !value.nil? && !value.empty?
+                    if value.is_a?(Array)
+                        value = value.map {|v|
+                            v.security_group_id if v.is_a?(AWS::EC2::SecurityGroup)
+                        }.join(",")
+                    end
+
+                    info << "AWS_#{key.to_s.upcase}=#{URI::encode(value)} "
+                end
+            }
+
+            info
+        rescue
+            # Unkown state if exception occurs retrieving information from
+            # an instance
+            "#{POLL_ATTRIBUTE[:state]}=#{VM_STATE[:unknown]} "
+        end
     end
 
     # Execute an EC2 command
@@ -559,6 +572,29 @@ private
             STDERR.puts e.message
             exit(-1)
         end
+    end
+
+    # Build template for importation
+    def vm_to_one(instance)
+        cpu, mem = instance_type_capacity(instance.instance_type)
+
+        mem = mem.to_i / 1024 # Memory for templates expressed in MB
+
+        str = "NAME   = \"Instance from #{instance.id}\"\n"\
+              "CPU    = \"#{cpu}\"\n"\
+              "vCPU   = \"#{cpu}\"\n"\
+              "MEMORY = \"#{mem}\"\n"\
+              "HYPERVISOR = \"ec2\"\n"\
+              "PUBLIC_CLOUD = [\n"\
+              "  TYPE  =\"ec2\",\n"\
+              "  AMI   =\"#{instance.image_id}\"\n"\
+              "]\n"\
+              "IMPORT_VM_ID    = \"#{instance.id}\"\n"\
+              "SCHED_REQUIREMENTS=\"NAME=\\\"#{@host}\\\"\"\n"\
+              "DESCRIPTION = \"Instance imported from EC2, from instance"\
+              " #{instance.id}, AMI #{instance.image_id}\"\n"
+
+        str
     end
 end
 

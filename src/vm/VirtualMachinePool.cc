@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -18,6 +18,7 @@
 #include "VirtualMachineHook.h"
 
 #include "NebulaLog.h"
+#include "Nebula.h"
 
 #include <sstream>
 
@@ -26,6 +27,18 @@
 
 time_t VirtualMachinePool::_monitor_expiration;
 bool   VirtualMachinePool::_submit_on_hold;
+float VirtualMachinePool::_default_cpu_cost;
+float VirtualMachinePool::_default_mem_cost;
+
+
+const char * VirtualMachinePool::import_table = "vm_import";
+
+const char * VirtualMachinePool::import_db_names = "deploy_id, vmid";
+
+const char * VirtualMachinePool::import_db_bootstrap =
+    "CREATE TABLE IF NOT EXISTS vm_import "
+    "(deploy_id VARCHAR(128), vmid INTEGER, PRIMARY KEY(deploy_id))";
+
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -37,7 +50,9 @@ VirtualMachinePool::VirtualMachinePool(
         const string&               remotes_location,
         vector<const Attribute *>&  restricted_attrs,
         time_t                      expire_time,
-        bool                        on_hold)
+        bool                        on_hold,
+        float                       default_cpu_cost,
+        float                       default_mem_cost)
     : PoolSQL(db, VirtualMachine::table, true, false)
 {
     const VectorAttribute * vattr;
@@ -48,10 +63,10 @@ VirtualMachinePool::VirtualMachinePool(
     string arg;
     bool   remote;
 
-    bool state_hook = false;
-
     _monitor_expiration = expire_time;
     _submit_on_hold = on_hold;
+    _default_cpu_cost = default_cpu_cost;
+    _default_mem_cost = default_mem_cost;
 
     if ( _monitor_expiration == 0 )
     {
@@ -117,8 +132,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                            VirtualMachine::PROLOG, VirtualMachine::ACTIVE);
             add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "RUNNING" )
         {
@@ -127,8 +140,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                            VirtualMachine::RUNNING, VirtualMachine::ACTIVE);
             add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "SHUTDOWN" )
         {
@@ -137,8 +148,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                             VirtualMachine::EPILOG, VirtualMachine::ACTIVE);
             add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "STOP" )
         {
@@ -147,8 +156,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                             VirtualMachine::LCM_INIT, VirtualMachine::STOPPED);
             add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "DONE" )
         {
@@ -157,18 +164,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                             VirtualMachine::LCM_INIT, VirtualMachine::DONE);
             add_hook(hook);
-
-            state_hook = true;
-        }
-        else if ( on == "FAILED" )
-        {
-            VirtualMachineStateHook * hook;
-
-            hook = new VirtualMachineStateHook(name, cmd, arg, remote,
-                            VirtualMachine::LCM_INIT, VirtualMachine::FAILED);
-            add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "UNKNOWN" )
         {
@@ -177,8 +172,6 @@ VirtualMachinePool::VirtualMachinePool(
             hook = new VirtualMachineStateHook(name, cmd, arg, remote,
                             VirtualMachine::UNKNOWN, VirtualMachine::ACTIVE);
             add_hook(hook);
-
-            state_hook = true;
         }
         else if ( on == "CUSTOM" )
         {
@@ -212,8 +205,6 @@ VirtualMachinePool::VirtualMachinePool(
                     lcm_state, vm_state);
 
             add_hook(hook);
-
-            state_hook = true;
         }
         else
         {
@@ -224,20 +215,59 @@ VirtualMachinePool::VirtualMachinePool(
         }
     }
 
-    if ( state_hook )
-    {
-        VirtualMachineUpdateStateHook * hook;
-
-        hook = new VirtualMachineUpdateStateHook();
-
-        add_hook(hook);
-    }
-
     // Set restricted attributes
     VirtualMachineTemplate::set_restricted_attributes(restricted_attrs);
 }
 
 /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int VirtualMachinePool::insert_index(const string& deploy_id, int vmid,
+    bool replace)
+{
+    ostringstream oss;
+    char *        deploy_name = db->escape_str(deploy_id.c_str());
+
+    if (deploy_name == 0)
+    {
+        return -1;
+    }
+
+    if (replace)
+    {
+        oss << "REPLACE ";
+    }
+    else
+    {
+        oss << "INSERT ";
+    }
+
+    oss << "INTO " << import_table << " ("<< import_db_names <<") "
+        << " VALUES ('" << deploy_name << "'," << vmid << ")";
+
+    db->free_str(deploy_name);
+
+    return db->exec(oss);
+};
+
+/* -------------------------------------------------------------------------- */
+
+void VirtualMachinePool::drop_index(const string& deploy_id)
+{
+    ostringstream oss;
+    char *        deploy_name = db->escape_str(deploy_id.c_str());
+
+    if (deploy_name == 0)
+    {
+        return;
+    }
+
+    oss << "DELETE FROM " << import_table << " WHERE deploy_id='"
+        << deploy_name << "'";
+
+    db->exec(oss);
+}
+
 /* -------------------------------------------------------------------------- */
 
 int VirtualMachinePool::allocate (
@@ -253,6 +283,8 @@ int VirtualMachinePool::allocate (
 {
     VirtualMachine * vm;
 
+    string deploy_id;
+
     // ------------------------------------------------------------------------
     // Build a new Virtual Machine object
     // ------------------------------------------------------------------------
@@ -267,11 +299,42 @@ int VirtualMachinePool::allocate (
         vm->state = VirtualMachine::PENDING;
     }
 
+    vm->user_obj_template->get("IMPORT_VM_ID", deploy_id);
+
+    if (!deploy_id.empty())
+    {
+        vm->state = VirtualMachine::HOLD;
+
+        if (insert_index(deploy_id, -1, false) == -1) //Set import in progress
+        {
+            delete vm;
+
+            error_str = "Virtual Machine " + deploy_id + " already imported.";
+            return -1;
+        }
+    }
+
     // ------------------------------------------------------------------------
     // Insert the Object in the pool
     // ------------------------------------------------------------------------
 
     *oid = PoolSQL::allocate(vm, error_str);
+
+    // ------------------------------------------------------------------------
+    // Insert the deploy_id - vmid index for imported VMs
+    // ------------------------------------------------------------------------
+
+    if (!deploy_id.empty())
+    {
+        if (*oid >= 0)
+        {
+            insert_index(deploy_id, *oid, true);
+        }
+        else
+        {
+            drop_index(deploy_id);
+        }
+    }
 
     return *oid;
 }
@@ -460,16 +523,43 @@ int VirtualMachinePool::dump_monitoring(
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
-int VirtualMachinePool::min_stime_cb(void * _min_stime, int num, char **values, char **names)
+int VirtualMachinePool::db_int_cb(void * _int_output, int num, char **values, char **names)
 {
     if ( num == 0 || values == 0 || values[0] == 0 )
     {
         return -1;
     }
 
-    *static_cast<int*>(_min_stime) = atoi(values[0]);
+    *static_cast<int*>(_int_output) = atoi(values[0]);
 
     return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+int VirtualMachinePool::get_vmid (const string& deploy_id)
+{
+    int rc;
+    int vmid = -1;
+    ostringstream oss;
+
+    set_callback(static_cast<Callbackable::Callback>(&VirtualMachinePool::db_int_cb),
+                 static_cast<void *>(&vmid));
+
+    oss << "SELECT vmid FROM " << import_table
+        << " WHERE deploy_id = '" << db->escape_str(deploy_id.c_str()) << "'";
+
+    rc = db->exec(oss, this);
+
+    unset_callback();
+
+    if (rc != 0 )
+    {
+        return -1;
+    }
+
+    return vmid;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -495,6 +585,42 @@ static string put_time(time_t t)
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ *  SBrecord is an implementation structure to aggregate metric costs. It
+ *  includes a method to write the showback record to an xml stream
+ */
+struct SBRecord {
+
+    SBRecord(float c, float m, float h): cpu_cost(c), mem_cost(m), hours(h){};
+    SBRecord(): cpu_cost(0), mem_cost(0), hours(0){};
+
+    ostringstream& to_xml(ostringstream &oss)
+    {
+        string cpuc_s = one_util::float_to_str(cpu_cost);
+        string memc_s = one_util::float_to_str(mem_cost);
+        string hour_s = one_util::float_to_str(hours);
+        string cost_s = one_util::float_to_str(cpu_cost + mem_cost);
+
+        oss << "<CPU_COST>"  << cpuc_s << "</CPU_COST>"
+            << "<MEMORY_COST>"<< memc_s << "</MEMORY_COST>"
+            << "<TOTAL_COST>" << cost_s << "</TOTAL_COST>"
+            << "<HOURS>"     << hour_s << "</HOURS>";
+
+        return oss;
+    };
+
+    void clear()
+    {
+        cpu_cost = 0;
+        mem_cost = 0;
+        hours    = 0;
+    };
+
+    float cpu_cost;
+    float mem_cost;
+    float hours;
+};
+
 int VirtualMachinePool::calculate_showback(
         int start_month,
         int start_year,
@@ -508,10 +634,11 @@ int VirtualMachinePool::calculate_showback(
     vector<time_t>                  showback_slots;
     vector<time_t>::iterator        slot_it;
 
-    // map<vid, map<month, pair<total_cost, n_hours> > >
-    map<int, map<time_t, pair<float,float> > >            vm_cost;
-    map<int, map<time_t, pair<float, float> > >::iterator vm_it;
-    map<time_t, pair<float,float> >::iterator vm_month_it;
+
+    map<int, map<time_t, SBRecord> >           vm_cost;
+    map<int, map<time_t, SBRecord> >::iterator vm_it;
+
+    map<time_t, SBRecord>::iterator vm_month_it;
 
     VirtualMachine* vm;
 
@@ -519,6 +646,9 @@ int VirtualMachinePool::calculate_showback(
     ostringstream   oss;
     ostringstream   body;
     char *          sql_body;
+    string          sql_cmd_start;
+    string          sql_cmd_separator;
+    string          sql_cmd_end;
 
     tm      tmp_tm;
     int     vid;
@@ -560,7 +690,7 @@ int VirtualMachinePool::calculate_showback(
     {
         // Set start time to the lowest stime from the history records
 
-        set_callback(static_cast<Callbackable::Callback>(&VirtualMachinePool::min_stime_cb),
+        set_callback(static_cast<Callbackable::Callback>(&VirtualMachinePool::db_int_cb),
                      static_cast<void *>(&start_time));
 
         oss << "SELECT MIN(stime) FROM " << History::table;
@@ -662,8 +792,8 @@ int VirtualMachinePool::calculate_showback(
         history.xpath(cpu,      "/HISTORY/VM/TEMPLATE/CPU", 0);
         history.xpath(mem,      "/HISTORY/VM/TEMPLATE/MEMORY", 0);
 
-        history.xpath(cpu_cost, "/HISTORY/VM/TEMPLATE/CPU_COST", 0);
-        history.xpath(mem_cost, "/HISTORY/VM/TEMPLATE/MEMORY_COST", 0);
+        history.xpath(cpu_cost, "/HISTORY/VM/TEMPLATE/CPU_COST", _default_cpu_cost);
+        history.xpath(mem_cost, "/HISTORY/VM/TEMPLATE/MEMORY_COST", _default_mem_cost);
 
 #ifdef SBDDEBUG
         int seq;
@@ -701,21 +831,17 @@ int VirtualMachinePool::calculate_showback(
 
                 float n_hours = difftime(etime, stime) / 60 / 60;
 
-                float cost = 0;
-
-                cost += cpu_cost * cpu * n_hours;
-                cost += mem_cost * mem * n_hours;
-
                 // Add to vm time slot.
-                map<time_t, pair<float,float> >& totals = vm_cost[vid];
+                map<time_t, SBRecord>& totals = vm_cost[vid];
 
                 if(totals.count(t) == 0)
                 {
-                    totals[t] = make_pair(0,0);
+                    totals[t].clear();
                 }
 
-                totals[t].first  += cost;
-                totals[t].second += n_hours;
+                totals[t].cpu_cost += cpu_cost * cpu * n_hours;
+                totals[t].mem_cost += mem_cost * mem * n_hours;
+                totals[t].hours    += n_hours;
             }
         }
     }
@@ -728,15 +854,44 @@ int VirtualMachinePool::calculate_showback(
 
     // Write to DB
 
+    if (db->multiple_values_support())
+    {
+        oss.str("");
+
+        oss << "REPLACE INTO " << VirtualMachine::showback_table
+            << " ("<< VirtualMachine::showback_db_names <<") VALUES ";
+
+        sql_cmd_start = oss.str();
+
+        sql_cmd_separator = ",";
+
+        sql_cmd_end = "";
+    }
+    else
+    {
+        oss.str("");
+        oss << "BEGIN TRANSACTION; "
+            << "REPLACE INTO " << VirtualMachine::showback_table
+            << " ("<< VirtualMachine::showback_db_names <<") VALUES ";
+
+        sql_cmd_start = oss.str();
+
+        oss.str("");
+        oss << "; REPLACE INTO " << VirtualMachine::showback_table
+            << " ("<< VirtualMachine::showback_db_names <<") VALUES ";
+
+        sql_cmd_separator = oss.str();
+
+        sql_cmd_end = "; COMMIT";
+    }
+
     oss.str("");
-    oss << "REPLACE INTO " << VirtualMachine::showback_table
-        << " ("<< VirtualMachine::showback_db_names <<") VALUES ";
 
     int n_entries = 0;
 
     for ( vm_it = vm_cost.begin(); vm_it != vm_cost.end(); vm_it++ )
     {
-        map<time_t, pair<float,float> >& totals = vm_it->second;
+        map<time_t, SBRecord>& totals = vm_it->second;
 
         for ( vm_month_it = totals.begin(); vm_month_it != totals.end(); vm_month_it++ )
         {
@@ -767,9 +922,6 @@ int VirtualMachinePool::calculate_showback(
 
             body.str("");
 
-            string cost  = one_util::float_to_str(vm_month_it->second.first);
-            string hours = one_util::float_to_str(vm_month_it->second.second);
-
             body << "<SHOWBACK>"
                     << "<VMID>"     << vmid                     << "</VMID>"
                     << "<VMNAME>"   << vmname                   << "</VMNAME>"
@@ -778,10 +930,9 @@ int VirtualMachinePool::calculate_showback(
                     << "<UNAME>"    << uname                    << "</UNAME>"
                     << "<GNAME>"    << gname                    << "</GNAME>"
                     << "<YEAR>"     << tmp_tm.tm_year + 1900    << "</YEAR>"
-                    << "<MONTH>"    << tmp_tm.tm_mon + 1        << "</MONTH>"
-                    << "<COST>"     << cost                     << "</COST>"
-                    << "<HOURS>"    << hours                    << "</HOURS>"
-                << "</SHOWBACK>";
+                    << "<MONTH>"    << tmp_tm.tm_mon + 1        << "</MONTH>";
+
+            vm_month_it->second.to_xml(body) << "</SHOWBACK>";
 
             sql_body =  db->escape_str(body.str().c_str());
 
@@ -794,12 +945,11 @@ int VirtualMachinePool::calculate_showback(
             if (n_entries == 0)
             {
                 oss.str("");
-                oss << "REPLACE INTO " << VirtualMachine::showback_table
-                    << " ("<< VirtualMachine::showback_db_names <<") VALUES ";
+                oss << sql_cmd_start;
             }
             else
             {
-                oss << ",";
+                oss << sql_cmd_separator;
             }
 
             oss << " (" <<  vm_it->first            << ","
@@ -814,6 +964,8 @@ int VirtualMachinePool::calculate_showback(
             // To avoid the oss to grow indefinitely, flush contents
             if (n_entries == 1000)
             {
+                oss << sql_cmd_end;
+
                 rc = db->exec(oss);
 
                 if (rc != 0)
@@ -831,16 +983,20 @@ int VirtualMachinePool::calculate_showback(
             debug << "VM " << vm_it->first
                 << " cost for Y " << tmp_tm.tm_year + 1900
                 << " M " << tmp_tm.tm_mon + 1
-                << " COST " << cost << " €"
-                << " HOURS " << hours;
+                << " COST " << one_util::float_to_str(
+                        vm_month_it->second.cpu_cost +
+                        vm_month_it->second.mem_cost) << " €"
+                << " HOURS " << vm_month_it->second.hours;
 
             NebulaLog::log("SHOWBACK", Log::DEBUG, debug);
-#endif            
+#endif
         }
     }
 
     if (n_entries > 0)
     {
+        oss << sql_cmd_end;
+
         rc = db->exec(oss);
 
         if (rc != 0)
@@ -867,4 +1023,107 @@ int VirtualMachinePool::calculate_showback(
 #endif
 
     return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+void VirtualMachinePool::delete_attach_disk(int vid)
+{
+    VirtualMachine *  vm;
+    VectorAttribute * disk;
+    Snapshots *       snap;
+
+    int uid;
+    int gid;
+    int oid;
+
+    vm = get(vid,true);
+
+    if ( vm == 0 )
+    {
+        return;
+    }
+
+    disk = vm->delete_attach_disk(&snap);
+    uid  = vm->get_uid();
+    gid  = vm->get_gid();
+    oid  = vm->get_oid();
+
+    update(vm);
+
+    vm->unlock();
+
+    if ( disk != 0 )
+    {
+        Nebula&       nd     = Nebula::instance();
+        ImageManager* imagem = nd.get_imagem();
+
+        Template tmpl;
+        int      image_id;
+
+        tmpl.set(disk);
+
+        if ( disk->vector_value("IMAGE_ID", image_id) == 0 )
+        {
+            // Disk using an Image
+            Quotas::quota_del(Quotas::IMAGE, uid, gid, &tmpl);
+
+            if (snap != 0)
+            {
+                imagem->set_image_snapshots(image_id, *snap, false);
+                delete snap;
+            }
+
+            imagem->release_image(oid, image_id, false);
+        }
+        else // Volatile disk
+        {
+            // It is an update of the volatile counter without
+            // shutting destroying a VM
+            tmpl.add("VMS", 0);
+
+            Quotas::quota_del(Quotas::VM, uid, gid, &tmpl);
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+void VirtualMachinePool::delete_attach_nic(int vid)
+{
+    VirtualMachine *  vm;
+    VectorAttribute * nic;
+
+    int uid;
+    int gid;
+    int oid;
+
+    vm = get(vid,true);
+
+    if ( vm == 0 )
+    {
+        return;
+    }
+
+    nic = vm->delete_attach_nic();
+    uid = vm->get_uid();
+    gid = vm->get_gid();
+    oid = vm->get_oid();
+
+    update(vm);
+
+    vm->unlock();
+
+    if ( nic != 0 )
+    {
+        Template tmpl;
+
+        tmpl.set(nic);
+
+        Quotas::quota_del(Quotas::NETWORK, uid, gid, &tmpl);
+
+        VirtualMachine::release_network_leases(nic, oid);
+    }
 }

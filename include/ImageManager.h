@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -26,6 +26,7 @@ using namespace std;
 extern "C" void * image_action_loop(void *arg);
 
 class Image;
+class Snapshots;
 class Template;
 
 class ImageManager : public MadManager, public ActionListener
@@ -163,12 +164,13 @@ public:
                     string& error);
 
     /**
-     *  Deletes an image from the repository and the DB
+     *  Deletes an image from the repository and the DB. The Datastore image list
+     *  is also updated
      *    @param iid id of image
      *    @param error_str Error reason, if any
      *    @return 0 on success
      */
-    int delete_image(int iid, const string& ds_data, string& error_str);
+    int delete_image(int iid, string& error_str);
 
     /**
      *  Gets the size of an image by calling the STAT action of the associated
@@ -187,6 +189,42 @@ public:
       *    @param ds_id id of the datastore to monitor
       */
      void monitor_datastore(int ds_id);
+
+    /**
+     *  Set the snapshots for the given image. The image MUST be persistent
+     *  and of type OS or DATABLOCK.
+     *    @param iid id of image
+     *    @param s snapshot list
+     *    @param failed the associated VM releasing the images is FAILED
+     */
+     void set_image_snapshots(int iid, const Snapshots& s, bool failed);
+
+     /**
+      *  Deletes the snapshot of an image
+      *    @param iid id of image
+      *    @param sid id of the snapshot
+      *    @param error_str Error reason, if any
+      *    @return 0 on success
+      */
+     int delete_snapshot(int iid, int sid, string& error);
+
+     /**
+      *  Reverts image state to a previous snapshot
+      *    @param iid id of image
+      *    @param sid id of the snapshot
+      *    @param error_str Error reason, if any
+      *    @return 0 on success
+      */
+     int revert_snapshot(int iid, int sid, string& error);
+
+     /**
+      *  Flattens ths snapshot by commiting changes to base image.
+      *    @param iid id of image
+      *    @param sid id of the snapshot
+      *    @param error_str Error reason, if any
+      *    @return 0 on success
+      */
+     int flatten_snapshot(int iid, int sid, string& error);
 
 private:
     /**

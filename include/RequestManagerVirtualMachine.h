@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -156,7 +156,7 @@ public:
     VirtualMachineMigrate():
         RequestManagerVirtualMachine("VirtualMachineMigrate",
                                      "Migrates a virtual machine",
-                                     "A:siibb")
+                                     "A:siibbi")
     {
          auth_op = AuthRequest::ADMIN;
     };
@@ -170,15 +170,15 @@ public:
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-class VirtualMachineSaveDisk : public RequestManagerVirtualMachine
+class VirtualMachineDiskSaveas : public RequestManagerVirtualMachine
 {
 public:
-    VirtualMachineSaveDisk():
-        RequestManagerVirtualMachine("VirtualMachineSaveDisk",
-                           "Saves a disk from virtual machine as a new image",
-                           "A:siissbb"){};
+    VirtualMachineDiskSaveas():
+        RequestManagerVirtualMachine("VirtualMachineDiskSaveas",
+                           "Save a disk from virtual machine as a new image",
+                           "A:siissi"){};
 
-    ~VirtualMachineSaveDisk(){};
+    ~VirtualMachineDiskSaveas(){};
 
     void request_execute(xmlrpc_c::paramList const& _paramList,
             RequestAttributes& att);
@@ -349,7 +349,7 @@ public:
     VirtualMachineRecover():
         RequestManagerVirtualMachine("VirtualMachineRecover",
                                      "Recovers a virtual machine",
-                                     "A:sib")
+                                     "A:sii")
     {
          auth_op = AuthRequest::ADMIN;
     };
@@ -387,5 +387,53 @@ public:
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
+
+class VirtualMachineDiskSnapshotCreate: public RequestManagerVirtualMachine
+{
+public:
+    VirtualMachineDiskSnapshotCreate():
+        RequestManagerVirtualMachine("VirtualMachineDiskSnapshotCreate",
+                           "Creates a new virtual machine disk snapshot",
+                           "A:siis"){};
+
+    ~VirtualMachineDiskSnapshotCreate(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+            RequestAttributes& att);
+};
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+class VirtualMachineDiskSnapshotRevert: public RequestManagerVirtualMachine
+{
+public:
+    VirtualMachineDiskSnapshotRevert():
+        RequestManagerVirtualMachine("VirtualMachineDiskSnapshotRevert",
+                           "Reverts disk state to a snapshot",
+                           "A:siii"){};
+
+    ~VirtualMachineDiskSnapshotRevert(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+            RequestAttributes& att);
+};
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+class VirtualMachineDiskSnapshotDelete: public RequestManagerVirtualMachine
+{
+public:
+    VirtualMachineDiskSnapshotDelete():
+        RequestManagerVirtualMachine("VirtualMachineDiskSnapshotDelete",
+                           "Deletes a disk snapshot",
+                           "A:siii"){};
+
+    ~VirtualMachineDiskSnapshotDelete(){};
+
+    void request_execute(xmlrpc_c::paramList const& _paramList,
+            RequestAttributes& att);
+};
 
 #endif

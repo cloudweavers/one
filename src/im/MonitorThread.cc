@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -33,6 +33,8 @@ HostPool * MonitorThread::hpool;
 DatastorePool * MonitorThread::dspool;
 
 LifeCycleManager * MonitorThread::lcm;
+
+VirtualMachineManager * MonitorThread::vmm;
 
 MonitorThreadPool * MonitorThread::mthpool;
 
@@ -184,6 +186,7 @@ void MonitorThread::do_message()
 
     set<int>        lost;
     map<int,string> found;
+    set<int>        rediscovered_vms;
 
     ostringstream   oss;
 
@@ -193,6 +196,8 @@ void MonitorThread::do_message()
     {
         return;
     }
+
+    set<int> prev_rediscovered = host->get_prev_rediscovered_vms();
 
     rc = host->update_info(tmpl, vm_poll, lost, found, non_shared_ds,
                 reserved_cpu, reserved_mem);
@@ -238,10 +243,23 @@ void MonitorThread::do_message()
             // 2.- It is supposed to be in RUNNING state
             // 3.- It has been monitored at least once
             if (vm->hasHistory() &&
-                vm->get_lcm_state() == VirtualMachine::RUNNING &&
-                vm->get_last_poll() != 0)
+                vm->get_last_poll() != 0 &&
+                 ( vm->get_lcm_state() == VirtualMachine::RUNNING ||
+                   vm->get_lcm_state() == VirtualMachine::SHUTDOWN ||
+                   vm->get_lcm_state() == VirtualMachine::SHUTDOWN_POWEROFF ||
+                   vm->get_lcm_state() == VirtualMachine::SHUTDOWN_UNDEPLOY))
             {
                 lcm->trigger(LifeCycleManager::MONITOR_POWEROFF, *its);
+            }
+            // If the guest is shut down before the poll reports it at least
+            // once, the VM gets stuck in running. An individual poll action
+            // is triggered after 5min (arbitrary number)
+            else if (vm->hasHistory() &&
+                    vm->get_last_poll() == 0 &&
+                    vm->get_lcm_state() == VirtualMachine::RUNNING &&
+                    (time(0) - vm->get_running_stime() > 300))
+            {
+                vmm->trigger(VirtualMachineManager::POLL,vm->get_oid());
             }
 
             vm->unlock();
@@ -249,7 +267,39 @@ void MonitorThread::do_message()
 
         for (itm = found.begin(); itm != found.end(); itm++)
         {
-            VirtualMachineManagerDriver::process_poll(itm->first, itm->second);
+            VirtualMachine * vm = vmpool->get(itm->first, true);
+
+            if (vm == 0)
+            {
+                continue;
+            }
+
+            // When a VM in poweroff is found again, it may be because of
+            // outdated poll information. To make sure, we check if VM was
+            // reported twice
+            if (vm->get_state() == VirtualMachine::POWEROFF &&
+                prev_rediscovered.count(itm->first) == 0)
+            {
+                rediscovered_vms.insert(itm->first);
+
+                vm->unlock();
+                continue;
+            }
+
+            VirtualMachineManagerDriver::process_poll(vm, itm->second);
+
+            vm->unlock();
+        }
+
+        // The rediscovered set is not stored in the DB, the update method
+        // is not needed
+        host = hpool->get(host_id,true);
+
+        if ( host != 0 )
+        {
+            host->set_prev_rediscovered_vms(rediscovered_vms);
+
+            host->unlock();
         }
     }
 };
@@ -266,6 +316,8 @@ MonitorThreadPool::MonitorThreadPool(int max_thr):concurrent_threads(max_thr),
     MonitorThread::hpool  = Nebula::instance().get_hpool();
 
     MonitorThread::lcm    = Nebula::instance().get_lcm();
+
+    MonitorThread::vmm    = Nebula::instance().get_vmm();
 
     MonitorThread::cpool  = Nebula::instance().get_clpool();
 

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -468,6 +468,30 @@ public:
     };
 
     ~SecurityGroupPoolInfo(){};
+};
+
+/* ------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+
+class VdcPoolInfo : public RequestManagerPoolInfoFilter
+{
+public:
+    VdcPoolInfo():
+        RequestManagerPoolInfoFilter("VdcPoolInfo",
+                                     "Returns the VDC pool",
+                                     "A:s")
+    {
+        Nebula& nd  = Nebula::instance();
+        pool        = nd.get_vdcpool();
+        auth_object = PoolObjectSQL::VDC;
+    };
+
+    ~VdcPoolInfo(){};
+
+    /* -------------------------------------------------------------------- */
+
+    void request_execute(
+            xmlrpc_c::paramList const& paramList, RequestAttributes& att);
 };
 
 /* -------------------------------------------------------------------------- */

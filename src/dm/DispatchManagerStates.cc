@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -31,15 +31,15 @@ void  DispatchManager::suspend_success_action(int vid)
     }
 
     if ((vm->get_state() == VirtualMachine::ACTIVE) &&
-        (vm->get_lcm_state() == VirtualMachine::SAVE_SUSPEND))
+        (vm->get_lcm_state() == VirtualMachine::SAVE_SUSPEND ||
+         vm->get_lcm_state() == VirtualMachine::PROLOG_MIGRATE_SUSPEND ||
+         vm->get_lcm_state() == VirtualMachine::PROLOG_MIGRATE_SUSPEND_FAILURE))
     {
         vm->set_state(VirtualMachine::SUSPENDED);
 
         vm->set_state(VirtualMachine::LCM_INIT);
 
         vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is SUSPENDED");
     }
     else
     {
@@ -86,8 +86,6 @@ void  DispatchManager::stop_success_action(int vid)
         }
 
         vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is STOPPED");
     }
     else
     {
@@ -134,8 +132,6 @@ void  DispatchManager::undeploy_success_action(int vid)
         }
 
         vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is UNDEPLOYED");
     }
     else
     {
@@ -166,15 +162,20 @@ void  DispatchManager::poweroff_success_action(int vid)
     }
 
     if ((vm->get_state() == VirtualMachine::ACTIVE) &&
-        (vm->get_lcm_state() == VirtualMachine::SHUTDOWN_POWEROFF))
+        (vm->get_lcm_state() == VirtualMachine::SHUTDOWN_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::HOTPLUG_PROLOG_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::HOTPLUG_EPILOG_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::PROLOG_MIGRATE_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_REVERT_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::DISK_SNAPSHOT_DELETE_POWEROFF ||
+         vm->get_lcm_state() == VirtualMachine::PROLOG_MIGRATE_POWEROFF_FAILURE))
     {
         vm->set_state(VirtualMachine::POWEROFF);
 
         vm->set_state(VirtualMachine::LCM_INIT);
 
         vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is POWEROFF");
     }
     else
     {
@@ -200,6 +201,7 @@ void  DispatchManager::done_action(int vid)
 
     int uid;
     int gid;
+    string deploy_id;
 
     VirtualMachine::LcmState lcm_state;
     VirtualMachine::VmState  dm_state;
@@ -216,7 +218,6 @@ void  DispatchManager::done_action(int vid)
 
     if ((dm_state == VirtualMachine::ACTIVE) &&
           (lcm_state == VirtualMachine::EPILOG ||
-           lcm_state == VirtualMachine::CANCEL ||
            lcm_state == VirtualMachine::CLEANUP_DELETE))
     {
         vm->release_network_leases();
@@ -231,17 +232,25 @@ void  DispatchManager::done_action(int vid)
 
         vmpool->update(vm);
 
-        vm->log("DiM", Log::INFO, "New VM state is DONE");
-
         uid  = vm->get_uid();
         gid  = vm->get_gid();
         tmpl = vm->clone_template();
+
+        if (vm->isImported())
+        {
+            deploy_id = vm->get_deploy_id();
+        }
 
         vm->unlock();
 
         Quotas::vm_del(uid, gid, tmpl);
 
         delete tmpl;
+
+        if (!deploy_id.empty())
+        {
+            vmpool->drop_index(deploy_id);
+        }
     }
     else
     {
@@ -249,39 +258,6 @@ void  DispatchManager::done_action(int vid)
 
         oss << "done action received but VM " << vid << " not in ACTIVE state";
         NebulaLog::log("DiM",Log::ERROR,oss);
-
-        vm->unlock();
-    }
-
-    return;
-}
-
-/* -------------------------------------------------------------------------- */
-/* -------------------------------------------------------------------------- */
-
-void  DispatchManager::failed_action(int vid)
-{
-    VirtualMachine *    vm;
-
-    vm = vmpool->get(vid,true);
-
-    if ( vm == 0 )
-    {
-        return;
-    }
-
-    if (vm->get_lcm_state() == VirtualMachine::FAILURE)
-    {
-
-        vm->set_state(VirtualMachine::LCM_INIT);
-
-        vm->set_state(VirtualMachine::FAILED);
-
-        vm->set_exit_time(time(0));
-
-        vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is FAILED");
 
         vm->unlock();
     }
@@ -311,8 +287,6 @@ void  DispatchManager::resubmit_action(int vid)
         vm->set_state(VirtualMachine::PENDING);
 
         vmpool->update(vm);
-
-        vm->log("DiM", Log::INFO, "New VM state is PENDING");
 
         vm->unlock();
     }

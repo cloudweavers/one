@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -100,7 +100,7 @@ var provision_vdc_quotas_dashboard =
   '<div class="row">'+
     '<div class="large-11 large-centered columns">'+
       '<h2 class="subheader">'+
-        tr("VDC Quotas")+
+        tr("Group Quotas")+
       '</h2>'+
       '<br>'+
     '</div>'+
@@ -278,7 +278,7 @@ var provision_vdc_vms_dashboard =
   '<div class="row">'+
     '<div class="large-11 large-centered columns">'+
       '<h2 class="subheader">'+
-        tr("VDC Virtual Machines")+
+        tr("Group Virtual Machines")+
       '</h2>'+
       '<br>'+
     '</div>'+
@@ -469,7 +469,7 @@ var provision_create_vm = '<form id="provision_create_vm" class="hidden section_
   '<div class="row">'+
     '<div class="large-10 large-centered columns">'+
       '<dl class="accordion provision_accordion_template" data-accordion="provision_accordion_template">'+
-        '<dd style="border-bottom: 1px solid #efefef;" class="active">'+
+        '<dd style="border-bottom: 1px solid #efefef;" class="active accordion-navigation">'+
           '<a href="#provision_dd_template" style="background: #fff; font-size: 30px">'+
             '<span class="select_template" style="color:#555">'+
               tr("Select a Template")+
@@ -489,7 +489,7 @@ var provision_create_vm = '<form id="provision_create_vm" class="hidden section_
               '<div class="large-12 large-centered columns">'+
                 '<dl class="tabs text-center" data-tab style="width: 100%">'+
                   '<dd class="active" style="width: 33%;"><a href="#provision_system_templates_selector">'+ tr("System") +'</a></dd>'+
-                  '<dd style="width: 33%;"><a href="#provision_vdc_templates_selector">'+ tr("VDC") +'</a></dd>'+
+                  '<dd style="width: 33%;"><a href="#provision_vdc_templates_selector">'+ tr("Group") +'</a></dd>'+
                   '<dd style="width: 34%;"><a href="#provision_saved_templates_selector">'+ tr("Saved") +'</a></dd>'+
                 '</dl>'+
                 '<div class="row">'+
@@ -599,7 +599,7 @@ var provision_create_flow = '<form id="provision_create_flow" class="hidden sect
   '<div class="row">'+
     '<div class="large-10 large-centered columns">'+
       '<dl class="accordion provision_accordion_flow_template" data-accordion="provision_accordion_flow_template">'+
-        '<dd style="border-bottom: 1px solid #efefef;" class="active">'+
+        '<dd style="border-bottom: 1px solid #efefef;" class="active accordion-navigation">'+
           '<a href="#provision_dd_flow_template" style="background: #fff; font-size: 30px">'+
             '<span class="select_template" style="color:#555">'+
               tr("Select a Template")+
@@ -702,7 +702,7 @@ var provision_quota_widget = '<div class="row">'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_unlimited" style="display:none">'+
     '<span style="font-size: 18px; color: #999">'+
-      tr("Unlimited. VDC quotas will still apply")+
+      tr("Unlimited. Group quotas will still apply")+
     '</span>'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_default" style="display:none">'+
@@ -744,7 +744,7 @@ var provision_quota_widget = '<div class="row">'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_unlimited" style="display:none">'+
     '<span style="font-size: 18px; color: #999">'+
-      tr("Unlimited. VDC quotas will still apply")+
+      tr("Unlimited. Group quotas will still apply")+
     '</span>'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_default" style="display:none">'+
@@ -789,7 +789,7 @@ var provision_quota_widget = '<div class="row">'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_unlimited" style="display:none">'+
     '<span style="font-size: 18px; color: #999">'+
-      tr("Unlimited. VDC quotas will still apply")+
+      tr("Unlimited. Group quotas will still apply")+
     '</span>'+
   '</div>'+
   '<div class="medium-9 small-12 columns provision_quota_default" style="display:none">'+
@@ -1056,7 +1056,7 @@ var provision_user_info = '<div id="provision_user_info" class="hidden section_c
           '<div class="row">'+
             '<div class="large-12 large-centered columns">'+
               '<dl class="accordion" data-accordion>'+
-                '<dd>'+
+                '<dd class="accordion-navigation">'+
                   '<a href="#provision_update_language_accordion" class="text-center accordion-a">'+
                     '<div class="row only-not-active">'+
                       '<div class="large-12 large-centered columns">'+
@@ -1098,7 +1098,7 @@ var provision_user_info = '<div id="provision_user_info" class="hidden section_c
           '<div class="row">'+
             '<div class="large-12 large-centered columns">'+
               '<dl class="accordion" data-accordion>'+
-                '<dd>'+
+                '<dd class="accordion-navigation">'+
                   '<a href="#provision_update_password_accordion" class="text-center accordion-a">'+
                     '<div class="row only-not-active">'+
                       '<div class="large-12 large-centered columns">'+
@@ -1147,7 +1147,7 @@ var provision_user_info = '<div id="provision_user_info" class="hidden section_c
           '<div class="row">'+
             '<div class="large-12 large-centered columns">'+
               '<dl class="accordion" data-accordion>'+
-                '<dd>'+
+                '<dd class="accordion-navigation">'+
                   '<a href="#provision_update_view_accordion" class="text-center accordion-a">'+
                     '<div class="row only-not-active">'+
                       '<div class="large-12 large-centered columns">'+
@@ -1189,7 +1189,7 @@ var provision_user_info = '<div id="provision_user_info" class="hidden section_c
             '<div class="row">'+
               '<div class="large-12 large-centered columns">'+
                 '<dl class="accordion" data-accordion>'+
-                  '<dd >'+
+                  '<dd class="accordion-navigation">'+
                     '<a href="#provision_add_ssh_key_accordion" class="text-center accordion-a">'+
                       '<div class="row only-not-active">'+
                         '<div class="large-12 large-centered columns">'+
@@ -1336,7 +1336,7 @@ var list_users_accordion_id = 0;
 function provision_list_users(opts_arg){
   list_users_accordion_id += 1;
   return '<dl class="accordion accordion_list provision_list_users" data-accordion>'+
-    '<dd class="active">'+
+    '<dd class="active accordion-navigation">'+
       '<a href="#provision_list_user_accordion'+list_users_accordion_id+'" class="provision_back right only-not-active">'+
         '<span class="button medium radius">'+
           '<i class="fa fa-fw fa-lg fa-th"/> '+
@@ -1377,7 +1377,7 @@ function provision_list_users(opts_arg){
         '</div>'+
       '</div>'+
     '</dd>'+
-    '<dd>'+
+    '<dd class="accordion-navigation">'+
       '<a class="provision_show_user_accordion" href="#provision_show_user_accordion'+list_users_accordion_id+'">'+
       '</a>'+
       '<div id="provision_show_user_accordion'+list_users_accordion_id+'" class="content">'+
@@ -1393,7 +1393,7 @@ var provision_manage_vdc = '<div id="provision_manage_vdc" class="hidden section
         '<div class="large-11 large-centered columns">'+
           '<h3 class="subheader text-right">'+
             '<span class="left">'+
-              tr("VDC Accounting")+
+              tr("Group Accounting")+
             '</span>'+
           '</h3>'+
         '</div>'+
@@ -1408,7 +1408,7 @@ var provision_manage_vdc = '<div id="provision_manage_vdc" class="hidden section
         '<div class="large-11 large-centered columns">'+
           '<h3 class="subheader text-right">'+
             '<span class="left">'+
-              tr("VDC Showback")+
+              tr("Group Showback")+
             '</span>'+
           '</h3>'+
         '</div>'+
@@ -1423,7 +1423,7 @@ var provision_manage_vdc = '<div id="provision_manage_vdc" class="hidden section
         '<div class="large-11 large-centered columns">'+
           '<h3 class="subheader text-right">'+
             '<span class="left">'+
-              tr("VDC Quotas")+
+              tr("Group Quotas")+
             '</span>'+
           '</h3>'+
         '</div>'+
@@ -1448,7 +1448,7 @@ function provision_list_templates(opts_arg){
 
   list_templates_accordion_id += 1;
   return '<dl class="accordion accordion_list provision_list_templates" data-accordion="dfsaf">'+
-    '<dd class="'+ (opts.active ? 'active' : '') +'">'+
+    '<dd class="'+ (opts.active ? 'active' : '') +' accordion-navigation">'+
       '<a class="right only-not-active" href="#provision_list_template_accordion'+list_templates_accordion_id+'">'+
         '<span class="button medium radius">'+
           '<i class="fa fa-fw fa-lg fa-th"/> '+
@@ -1491,7 +1491,7 @@ function provision_list_templates(opts_arg){
         '</div>'+
       '</div>'+
     '</dd>'+
-    '<dd>'+
+    '<dd class="accordion-navigation">'+
       '<a class="provision_show_template_accordion" href="#provision_show_template_accordion'+list_templates_accordion_id+'">'+
       '</a>'+
       '<div id="provision_show_template_accordion'+list_templates_accordion_id+'" class="content">'+
@@ -1688,7 +1688,7 @@ function provision_list_vms(opts_arg){
 
   list_vms_accordion_id += 1;
   return '<dl class="accordion accordion_list provision_list_vms" data-accordion>'+
-    '<dd class="'+ (opts.active ? 'active' : '') +'">'+
+    '<dd class="'+ (opts.active ? 'active' : '') +' accordion-navigation">'+
         '<a href="#provision_list_vm_accordion'+list_vms_accordion_id+'" class="provision_back right only-not-active">'+
           '<span class="button medium radius">'+
             '<i class="fa fa-fw fa-lg fa-th"/> '+
@@ -1735,7 +1735,7 @@ function provision_list_vms(opts_arg){
         '</div>'+
       '</div>'+
     '</dd>'+
-    '<dd>'+
+    '<dd class="accordion-navigation">'+
       '<a class="provision_show_vm_accordion" href="#provision_show_vm_accordion'+list_vms_accordion_id+'">'+
       '</a>'+
       '<div id="provision_show_vm_accordion'+list_vms_accordion_id+'" class="content">'+
@@ -1816,7 +1816,7 @@ function provision_list_flows(opts_arg){
 
   list_flows_accordion_id += 1;
   return '<dl class="accordion accordion_list provision_list_flows" data-accordion>'+
-    '<dd class="'+ (opts.active ? 'active' : '') +'">'+
+    '<dd class="'+ (opts.active ? 'active' : '') +' accordion-navigation">'+
       '<a class="provision_list_flow_accordion right only-not-active provision_back" href="#provision_list_flow_accordion'+list_flows_accordion_id+'">'+
         '<span class="button medium radius">'+
           '<i class="fa fa-fw fa-lg fa-th"/> '+
@@ -1865,7 +1865,7 @@ function provision_list_flows(opts_arg){
         '</div>'+
       '</div>'+
     '</dd>'+
-    '<dd>'+
+    '<dd class="accordion-navigation">'+
       '<a class="provision_show_flow_accordion" href="#provision_show_flow_accordion'+list_flows_accordion_id+'">'+
       '</a>'+
       '<div id="provision_show_flow_accordion'+list_flows_accordion_id+'" class="content">'+
@@ -1906,7 +1906,7 @@ var provision_header = '<a href="#" class="provision_image_header" ><img src="'+
 if (Config.isTabPanelEnabled("provision-tab", "users")) {
   provision_header +=
     '<li>'+
-      '<a href"#" class="medium off-color" id="provision_vdc_info_button" style=" margin-left: 10px;margin-right: 10px;"><i class="fa fa-fw fa-2x fa-bar-chart-o"/><br>'+tr("VDC Info")+'</a>'+
+      '<a href"#" class="medium off-color" id="provision_vdc_info_button" style=" margin-left: 10px;margin-right: 10px;"><i class="fa fa-fw fa-2x fa-bar-chart-o"/><br>'+tr("Group Info")+'</a>'+
     '</li>'+
     '<li>'+
       '<a href"#" class="medium off-color provision_users_list_button" id="" style=" margin-left: 10px;margin-right: 10px;"><i class="fa fa-fw fa-2x fa-users"/><br>'+tr("Users")+'</a>'+
@@ -2112,6 +2112,8 @@ function generate_custom_attrs(context, custom_attrs) {
           '</div>'+
         '</div>');
     })
+  } else {
+    context.html("");
   }
 }
 
@@ -2177,17 +2179,17 @@ function generate_cardinality_selector(context, role_template, template_json) {
 
       if (capacity.CPU && capacity.CPU_COST) {
         cost += capacity.CPU * capacity.CPU_COST
-        $(".cost_value").data("CPU_COST", capacity.CPU_COST);
+        $(".cost_value", context).data("CPU_COST", capacity.CPU_COST);
       }
 
       if (capacity.MEMORY && capacity.MEMORY_COST) {
         cost += capacity.MEMORY * capacity.MEMORY_COST
-        $(".cost_value").data("MEMORY_COST", capacity.MEMORY_COST);
+        $(".cost_value", context).data("MEMORY_COST", capacity.MEMORY_COST);
       }
 
       $(".provision_create_service_cost_div", context).data("cost", cost)
       var cost_value = cost*parseInt(role_template.cardinality);
-      $(".cost_value").html(cost_value.toFixed(2));
+      $(".cost_value", context).html(cost_value.toFixed(2));
     } else {
       $(".provision_create_service_cost_div").hide();
     }
@@ -2203,7 +2205,7 @@ function generate_cardinality_selector(context, role_template, template_json) {
       $( ".cardinality_slider", context).on('change', function(){
         $(".cardinality_value",context).html($(this).attr('data-slider'))
         var cost_value = $(".provision_create_service_cost_div", context).data("cost")*$(this).attr('data-slider');
-        $(".cost_value").html(cost_value.toFixed(2));
+        $(".cost_value", context).html(cost_value.toFixed(2));
       });
     } else {
       $( ".cardinality_slider_div", context).hide();
@@ -2269,7 +2271,7 @@ function generate_provision_instance_type_accordion(context, capacity) {
     '<div class="row">'+
       '<div class="large-12 large-centered columns">'+
         '<dl class="accordion" data-accordion="provision_accordion_'+provision_instance_type_accordion_id+'">'+
-          '<dd>'+
+          '<dd class="accordion-navigation">'+
             '<a href="#provision_instance_type_dd_'+provision_instance_type_accordion_id+'" class="button large-12 medium radius" style="color: #555;">'+
               tr("Change Capacity")+
             '</a>'+
@@ -2317,7 +2319,7 @@ function generate_provision_instance_type_accordion(context, capacity) {
       $(".cost_value").data("MEMORY_COST", capacity.MEMORY_COST);
     }
 
-    $(".cost_value").html(cost);
+    $(".cost_value").html(cost.toFixed(2));
   } else {
     $(".provision_create_template_cost_div").hide();
   }
@@ -2426,7 +2428,7 @@ function generate_provision_instance_type_accordion(context, capacity) {
           cost += $(this).attr("memory") * $(".cost_value").data("MEMORY_COST")
         }
 
-        $(".cost_value").html(cost);
+        $(".cost_value").html(cost.toFixed(2));
       }
 
       $('.accordion a', context).first().trigger("click");
@@ -2485,7 +2487,7 @@ function generate_provision_network_table(context, nic, vnet_attr){
       '</span>';
   }
 
-  var dd_context = $('<dd style="border-bottom: 1px solid #efefef;">'+
+  var dd_context = $('<dd style="border-bottom: 1px solid #efefef;" class="accordion-navigation">'+
     '<a href="#provision_accordion_dd_'+provision_nic_accordion_dd_id+'" style="background: #fff; font-size: 24px">'+
       nic_span +
     '</a>'+
@@ -2983,7 +2985,7 @@ function show_provision_user_info_callback(request, response) {
   if (Config.isFeatureEnabled("showback")) {
     showbackGraphs(
       $("#provision_user_info_showback_div"),
-        { fixed_user: info.ID});
+        { fixed_user: info.ID, fixed_group: ""});
   }
 }
 
@@ -3013,7 +3015,7 @@ function show_provision_group_info_callback(request, response) {
   if (Config.isFeatureEnabled("showback")) {
     showbackGraphs(
       $("#provision_info_vdc_group_showback", context),
-      {   fixed_group: info.ID });
+      {   fixed_user: "", fixed_group: info.ID });
   }
 
   $("#acct_placeholder", context).hide();
@@ -3496,7 +3498,7 @@ function get_provision_vm_state(data) {
       state_str = tr("ERROR");
       break;
     case tr("ACTIVE"):
-      var lcm_state = OpenNebula.Helper.resource_state("vm_lcm",data.LCM_STATE);
+      var lcm_state = OpenNebula.Helper.resource_state("short_vm_lcm",data.LCM_STATE);
 
       switch (lcm_state) {
         case tr("LCM_INIT"):
@@ -3706,6 +3708,11 @@ function setup_info_vm(context) {
             break;
         }
 
+        if (!enableVnc(data) && !enableSPICE(data)) {
+            $(".provision_vnc_button", context).hide();
+            $(".provision_vnc_button_disabled", context).hide();
+        }
+
         $(".provision_info_vm", context).attr("vm_id", data.ID);
         $(".provision_info_vm", context).data("vm", data);
 
@@ -3741,7 +3748,7 @@ function setup_info_vm(context) {
               '</span>'+
             '</li>'+
             //'<li  class="text-left provision-bullet-item" >'+
-            //  '<span style="color: #afafaf;px" style="font-size: 16px">'+
+            //  '<span style="color: #afafaf;" style="font-size: 16px">'+
             //    "ID: " +
             //    data.ID+
             //  '</span>' +
@@ -3750,15 +3757,21 @@ function setup_info_vm(context) {
               '<hr style="margin: 0px">'+
             '</li>'+
             '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
-              '<span style="color: #999;px">'+
+              '<span style="color: #999;">'+
                 '<i class="fa fa-fw fa-lg fa-clock-o"/>&emsp;'+
                 _format_date(data.STIME)+
               '</span>'+
             '</li>'+
             '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
-              '<span style="color: #999;px">'+
+              '<span style="color: #999;">'+
                 '<i class="fa fa-fw fa-lg fa-user"/>&emsp;'+
                 data.UNAME+
+              '</span>'+
+            '</li>'+
+            '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
+              '<span style="color: #999;">'+
+                '<i class="fa fa-fw fa-lg fa-link"/>&emsp;'+
+                data.ID+
               '</span>'+
             '</li>'+
             '<li class="text-left provision-bullet-item">'+
@@ -3874,22 +3887,18 @@ function setup_info_vm(context) {
       var context = $(".provision_info_vm[vm_id]");
 
       var vm_id = context.attr("vm_id");
-      var image_name = $('.provision_snapshot_name', context).val();
+      var template_name = $('.provision_snapshot_name', context).val();
 
-      OpenNebula.VM.saveas({
+      OpenNebula.VM.save_as_template({
         data : {
           id: vm_id,
           extra_param: {
-            disk_id : "0",
-            image_name : image_name,
-            type: "",
-            clonetemplate: true,
-            hot: true
+            name : template_name
           }
         },
         success: function(request, response){
           OpenNebula.Helper.clear_cache("VMTEMPLATE");
-          notifyMessage(tr("Image") + ' ' + request.request.data[0][1].image_name + ' ' + tr("saved successfully"))
+          notifyMessage(tr("Image") + ' ' + request.request.data[0][1].name + ' ' + tr("saved successfully"))
           update_provision_vm_info(vm_id, context);
           button.removeAttr("disabled");
         },
@@ -4303,14 +4312,11 @@ function setup_provision_vms_list(context, opts) {
   });
 
   $(".provision_list_vms_filter", context).on("change", ".resource_list_select", function(){
-    var filter;
-    if ($(this).val() == "-2"){
-      filter = "";
+    if ($(this).val() != "-2"){
+      provision_vms_datatable.fnFilter("^" + $(this).val() + "$", 2, true, false);
     } else {
-      filter = $(this).val();
+      provision_vms_datatable.fnFilter("", 2);
     }
-
-    provision_vms_datatable.fnFilter( filter, 2 );
   })
 
   insertSelectOptions(
@@ -4460,14 +4466,11 @@ function setup_provision_templates_list(context, opts) {
   });
 
   $(".provision_list_templates_filter", context).on("change", ".resource_list_select", function(){
-    var filter;
-    if ($(this).val() == "-2"){
-      filter = "";
+    if ($(this).val() != "-2"){
+      provision_templates_datatable.fnFilter("^" + $(this).val() + "$", 3, true, false);
     } else {
-      filter = $(this).val();
+      provision_templates_datatable.fnFilter("", 3);
     }
-
-    provision_templates_datatable.fnFilter( filter, 3 );
   })
 
   insertSelectOptions(
@@ -4746,15 +4749,21 @@ function setup_info_flow(context) {
               '<hr style="margin: 0px">'+
             '</li>'+
             '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
-              '<span style="color: #999;px">'+
+              '<span style="color: #999;">'+
                 '<i class="fa fa-fw fa-lg fa-clock-o"/>&emsp;'+
                 (start_time ? _format_date(start_time) : "-") +
               '</span>'+
             '</li>'+
             '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
-              '<span style="color: #999;px">'+
+              '<span style="color: #999;">'+
                 '<i class="fa fa-fw fa-lg fa-user"/>&emsp;'+
                 data.UNAME+
+              '</span>'+
+            '</li>'+
+            '<li class="text-left provision-bullet-item" style="font-size: 16px">'+
+              '<span style="color: #999;">'+
+                '<i class="fa fa-fw fa-lg fa-link"/>&emsp;'+
+                data.ID+
               '</span>'+
             '</li>'+
             '<li class="text-left provision-bullet-item">'+
@@ -5179,14 +5188,11 @@ function setup_provision_flows_list(context, opts){
   });
 
   $(".provision_list_flows_filter", context).on("change", ".resource_list_select", function(){
-    var filter;
-    if ($(this).val() == "-2"){
-      filter = "";
+    if ($(this).val() != "-2"){
+      provision_flows_datatable.fnFilter("^" + $(this).val() + "$", 2, true, false);
     } else {
-      filter = $(this).val();
+      provision_flows_datatable.fnFilter("", 2);
     }
-
-    provision_flows_datatable.fnFilter( filter, 2 );
   })
 
   insertSelectOptions(
@@ -5495,7 +5501,8 @@ function setup_provision_user_info(context) {
 
       showbackGraphs(
         $(".provision_vdc_info_container", context),
-          { fixed_user: $(".provision_info_vdc_user", context).attr("opennebula_id")});
+          { fixed_user: $(".provision_info_vdc_user", context).attr("opennebula_id"),
+            fixed_group: "" });
 
       $(".provision_vdc_info_container", context).prepend(
         '<h2 class="subheader">'+
@@ -6317,6 +6324,8 @@ $(document).ready(function(){
           generate_custom_attrs(
             $(".provision_custom_attributes_selector", create_vm_context),
             template_json.VMTEMPLATE.TEMPLATE.USER_INPUTS);
+        } else {
+          $(".provision_custom_attributes_selector", create_vm_context).html("");
         }
       }
     })
@@ -6337,16 +6346,21 @@ $(document).ready(function(){
       var template_id = $(".tabs-content .content.active .selected", context).attr("opennebula_id");
 
       var nics = [];
+      var nic;
       $(".selected_network", context).each(function(){
-        var nic;
         if ($(this).attr("template_nic")) {
           nic = JSON.parse($(this).attr("template_nic"))
-        } else {
+        } else if ($(this).attr("opennebula_id")) {
           nic = {
             'network_id': $(this).attr("opennebula_id")
           }
+        } else {
+          nic = undefined;
         }
-        nics.push(nic);
+
+        if (nic) {
+          nics.push(nic);
+        }
       });
 
       var instance_type = $(".provision_instance_types_ul .selected", context);
@@ -6625,6 +6639,8 @@ $(document).ready(function(){
                 generate_custom_attrs(
                   $(".provision_custom_attributes_selector", role_context),
                   template_json.VMTEMPLATE.TEMPLATE.USER_INPUTS);
+              } else {
+                $(".provision_custom_attributes_selector", role_context).html("");
               }
             }
           })
@@ -6726,7 +6742,7 @@ $(document).ready(function(){
     });
 
     //
-    // VDC Info
+    // Group Info
     //
 
 

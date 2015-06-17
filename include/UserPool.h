@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -186,11 +186,6 @@ public:
      *  allows delegated
      */
     static const char * PUBLIC_AUTH;
-
-    /**
-     *  Name for the default auth driver to be used for not registered users
-     */
-    static const char * DEFAULT_AUTH;
 
     /**
      *  Name for the default Sunstone server user

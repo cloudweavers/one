@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/* Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        */
+/* Copyright 2002-2015, OpenNebula Project (OpenNebula.org), C12G Labs        */
 /*                                                                            */
 /* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
 /* not use this file except in compliance with the License. You may obtain    */
@@ -19,6 +19,7 @@
 
 #include "HostXML.h"
 #include "NebulaUtil.h"
+#include "NebulaLog.h"
 
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
@@ -117,6 +118,39 @@ int HostXML::search(const char *name, int& value)
     {
         return ObjectXML::search(name, value);
     }
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
+bool HostXML::test_capacity(long long cpu, long long mem, string & error) const
+{
+    bool fits = (((max_cpu  - cpu_usage ) >= cpu) &&
+                ((max_mem  - mem_usage ) >= mem));
+
+    if (!fits)
+    {
+        if (NebulaLog::log_level() >= Log::DDEBUG)
+        {
+            ostringstream oss;
+
+            oss << "Not enough capacity. "
+                << "Requested: "
+                << cpu << " CPU, "
+                << mem << " KB MEM; "
+                << "Available: "
+                << (max_cpu  - cpu_usage ) << " CPU, "
+                << (max_mem  - mem_usage ) << " KB MEM";
+
+            error = oss.str();
+        }
+        else
+        {
+            error = "Not enough capacity.";
+        }
+    }
+
+    return fits;
 }
 
 /* -------------------------------------------------------------------------- */
